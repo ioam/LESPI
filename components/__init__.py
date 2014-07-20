@@ -1,3 +1,10 @@
+import numpy as np
+
+import param
+
+from imagen import Composite, Gaussian, Disk
+from imagen.random import UniformRandom
+
 from topo.base.simulation import EPConnectionEvent
 from topo.sheet import JointNormalizingCFSheet_Continuous
 
@@ -103,3 +110,54 @@ class MultiPortSheet(JointNormalizingCFSheet_Continuous):
             e = EPConnectionEvent(self.simulation.convert_to_time_type(
                 conn.delay) + self.simulation.time(), conn, data)
             self.simulation.enqueue_event(e)
+
+
+class GaussianBinaryDisk(Composite):
+
+    gaussian_size = param.Number(default=1.0,doc="Size of the Gaussian pattern.")
+
+    noise_scale = param.Number(default=1.0)
+
+    aspect_ratio  = param.Number(default=1.0,bounds=(0.0,None),softbounds=(0.0,2.0),
+        precedence=0.31,doc="""
+        Ratio of gaussian width to height; width is gaussian_size*aspect_ratio.""")
+
+    offset = param.Number(default=0.0,bounds=(-1.0,1.0))
+
+
+    def __call__(self, **params_to_override):
+        p = param.ParamOverrides(self, params_to_override)
+        gauss = Gaussian(aspect_ratio=p.aspect_ratio, size=p.gaussian_size)
+        unirand = UniformRandom(scale=p.noise_scale)
+        gaussrand = Composite(generators=[gauss, unirand], operator=np.add)
+        p.generators = [gaussrand, Disk(smoothing=0.0, size=1.0)]
+        p.operator = np.multiply
+        mat = super(GaussianBinaryDisk, self).__call__(**p)
+        mat = mat - mat.min()
+        mat /= mat.max()
+
+        return (mat + p.offset).round()
+
+
+class GaussianAdditiveCloud(Composite):
+    gaussian_size = param.Number(default=1.0,
+                                 doc="Size of the Gaussian pattern.")
+
+    aspect_ratio = param.Number(default=1.0, bounds=(0.0, None),
+                                softbounds=(0.0, 2.0),
+                                precedence=0.31, doc="""
+        Ratio of gaussian width to height; width is gaussian_size*aspect_ratio.""")
+
+    noise_scale = param.Number(default=1.0)
+
+
+    def __call__(self, **params_to_override):
+        p = param.ParamOverrides(self, params_to_override)
+        gauss = Gaussian(aspect_ratio=p.aspect_ratio, size=p.gaussian_size)
+        unirand = UniformRandom(scale=p.noise_scale)
+        p.generators = [gauss, unirand]
+        p.operator = np.add
+        mat = super(GaussianAdditiveCloud, self).__call__(**p)
+        mat = mat - mat.min()
+
+        return mat/mat.max()
