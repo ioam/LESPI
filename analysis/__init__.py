@@ -287,9 +287,11 @@ class measure_phase_tuning(FeatureCurveCommand):
         for idx, phase in enumerate(phasevalues):
             reduced_response = np.zeros((rows, cols))
             phase_stack = stack.select(Phase=phase)
-            for key in phase_stack.keys():
+            keys = [tuple(v for d, v in zip(stack.dimension_labels, k) if d != 'Orientation')
+                    for k in phase_stack.keys()]
+            for key in set(keys):
                 key_slice = list(key)
-                key_slice[stack.dim_index('Orientation')] = slice(None)
+                key_slice.insert(stack.dim_index('Orientation'), slice(None))
                 sliced_stack = stack[tuple(key_slice)]
                 for x in xrange(cols):
                     for y in xrange(rows):
@@ -302,8 +304,7 @@ class measure_phase_tuning(FeatureCurveCommand):
                         # Sample the units response at the optimal orientation
                         sv = sliced_stack.select(Orientation=closest_orpref).last
                         reduced_response[x, y] = sv.data[x, y]
-                reduced_key = tuple([key[stack.dim_index(d.name)] for d in reduced_dimensions])
-                reduced_stack[reduced_key] = phase_stack.last.clone(reduced_response)
+                reduced_stack[tuple(key)] = phase_stack.last.clone(reduced_response)
             phase_progress((float(idx+1)/p.num_phase)*100)
 
         grid = reduced_stack.grid_sample(roiratio*rows+2, roiratio*cols+2,
