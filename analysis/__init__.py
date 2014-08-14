@@ -287,21 +287,24 @@ class measure_phase_tuning(FeatureCurveCommand):
         for idx, phase in enumerate(phasevalues):
             reduced_response = np.zeros((rows, cols))
             phase_stack = stack.select(Phase=phase)
-            for x in xrange(cols):
-                for y in xrange(rows):
-                    # Find the closest match between the units preferred
-                    # orientation and the measured orientations
-                    unit_orpref = orpref.data[x, y]
-                    or_dists = [circular_dist(v, unit_orpref, np.pi) for v in orvalues]
-                    closest_orpref = orvalues[np.argmin(or_dists)]
+            for key in phase_stack.keys():
+                print key, phase_stack.dimension_labels
+                key_slice = list(key)
+                key_slice[stack.dim_index('Orientation')] = slice(None)
+                sliced_stack = stack[tuple(key_slice)]
+                for x in xrange(cols):
+                    for y in xrange(rows):
+                        # Find the closest match between the units preferred
+                        # orientation and the measured orientations
+                        unit_orpref = orpref.data[x, y]
+                        or_dists = [circular_dist(v, unit_orpref, np.pi) for v in orvalues]
+                        closest_orpref = orvalues[np.argmin(or_dists)]
 
-                    # Sample the units response at the optimal orientation
-                    sv = phase_stack.select(Orientation=closest_orpref).last
-                    reduced_response[x, y] = sv.data[x, y]
-            last_key = phase_stack.keys()[-1]
-            reduced_key = tuple([last_key[stack.dim_index(d.name)] for d in reduced_dimensions])
-            reduced_stack[reduced_key] = phase_stack.last.clone(reduced_response)
-
+                        # Sample the units response at the optimal orientation
+                        sv = sliced_stack.select(Orientation=closest_orpref).last
+                        reduced_response[x, y] = sv.data[x, y]
+                reduced_key = tuple([key[stack.dim_index(d.name)] for d in reduced_dimensions])
+                reduced_stack[reduced_key] = phase_stack.last.clone(reduced_response)
             phase_progress((float(idx+1)/p.num_phase)*100)
 
         grid = reduced_stack.grid_sample(roiratio*rows+2, roiratio*cols+2,
@@ -345,24 +348,24 @@ class ComplexityAnalysis(ParameterizedFunction):
 
         results = AttrTree()
 
-        complexity = np.zeros((int(rows), int(cols)))
-        for idx, ((x, y), curve) in enumerate(grid.items()):
-            row, col = grid.sheet2matrixidx(x, y)
-            ydata = curve.last.data[:, 1]
-            fft = np.fft.fft(list(ydata) * p.fft_sampling)
-            dc_value = abs(fft[0])
-            if dc_value != 0:
-                complexity[row, col] = 2 * abs(fft[p.fft_sampling]) / dc_value
-            else:
-                complexity[row, col] = 0
+        sheet_stack = SheetStack(None, dimensions=grid.values()[0].dimensions)
+        for idx, ((x, y), curve_stack) in enumerate(grid.items()):
+            for key in curve_stack.keys():
+                if key not in sheet_stack:
+                    complexity = np.zeros((int(rows), int(cols)))
+                    sheet_stack[key] = SheetView(complexity, grid.bounds,
+                                                 label='Complexity Analysis',
+                                                 value='Modulation Ratio')
+                row, col = grid.sheet2matrixidx(x, y)
+                ydata = curve_stack[key].data[:, 1]
+                fft = np.fft.fft(list(ydata) * p.fft_sampling)
+                dc_value = abs(fft[0])
+                if dc_value != 0:
+                    modulation_ratio = 2 * abs(fft[p.fft_sampling]) / dc_value
+                    sheet_stack[key].data[row, col] = modulation_ratio
 
-        complexity_sv = SheetView(complexity, grid.bounds,
-                                  label='Complexity Analysis',
-                                  value='Modulation Ratio')
-        results.set_path(('Complexity', 'V1'), complexity_sv)
-
+        results.set_path(('Complexity', 'V1'), sheet_stack)
         return results
-
 
 
 
