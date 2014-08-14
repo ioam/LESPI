@@ -4,15 +4,15 @@ Two layer model with one inhibitory and one excitatory sheet.
 Recurrent short range connections between sheets, long range excitation and short range inhibition
 """
 
-from math import pi, sqrt
+from math import pi
 
 import numpy
 import param
-import copy
 
-from imagen.random import GaussianBinaryDisk, GaussianAdditiveCloud
+from components import GaussianAdditiveCloud, MultiPortSheet
 
-from topo import base,learningfn,numbergen,transferfn,pattern,projection,responsefn,sheet
+from topo import learningfn, numbergen, transferfn, pattern, projection, \
+    responsefn, sheet
 
 import topo.learningfn.optimized
 import topo.transferfn.optimized
@@ -23,8 +23,6 @@ import topo.sheet.optimized
 
 import topo.transferfn.misc
 from topo.base.arrayutil import DivideWithConstant
-from topo.transferfn import TransferFn,TransferFnWithState, Square, NakaRushton
-import copy
 
 # Parameters that can be passed on the command line using -p
 from topo.misc.commandline import global_params as script_p
@@ -134,17 +132,17 @@ for s in ['LGNOn', 'LGNOff']:
                      nominal_bounds_template=sheet.BoundingBox(radius=0.4))
 
 
-topo.sim['V1Exc']=sheet.MultiPortSheet(precedence=0.6,
-                                       nominal_density=p.cortex_density,
-                                       nominal_bounds=sheet.BoundingBox(radius=p.area/2),
-                                       plastic=True,measure_maps=True,
-                                       output_fns=[transferfn.misc.HomeostaticResponse()])
+topo.sim['V1Exc']=MultiPortSheet(precedence=0.6,
+                                 nominal_density=p.cortex_density,
+                                 nominal_bounds=sheet.BoundingBox(radius=p.area/2),
+                                 plastic=True,measure_maps=True,
+                                 output_fns=[transferfn.misc.HomeostaticResponse()])
 
 topo.sim['V1Exc'].joint_norm_fn=topo.sheet.optimized.compute_joint_norm_totals_opt
 
-topo.sim['V1PV']=sheet.MultiPortSheet(precedence=0.7,nominal_density=p.cortex_density,
-                                      nominal_bounds=sheet.BoundingBox(radius=p.area/2),measure_maps=False,
-                                      plastic=True,output_fns=[transferfn.misc.HalfRectify()])
+topo.sim['V1PV']=MultiPortSheet(precedence=0.7,nominal_density=p.cortex_density,
+                                nominal_bounds=sheet.BoundingBox(radius=p.area/2),measure_maps=False,
+                                plastic=True,output_fns=[transferfn.misc.HalfRectify()])
 
 topo.sim['V1PV'].joint_norm_fn=topo.sheet.optimized.compute_joint_norm_totals_opt
 
@@ -250,4 +248,4 @@ topo.sim.grid_layout([['VSDLayer',    None,     None],
 
 import topo.analysis.featureresponses
 topo.analysis.featureresponses.FeatureMaps.selectivity_multiplier=1.0
-topo.analysis.featureresponses.FeatureCurveCommand.curve_parameters=[{"contrast":10},{"contrast":100}]
+topo.analysis.featureresponses.FeatureCurveCommand.contrasts=[10, 100]
