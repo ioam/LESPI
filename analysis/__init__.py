@@ -288,7 +288,6 @@ class measure_phase_tuning(FeatureCurveCommand):
             reduced_response = np.zeros((rows, cols))
             phase_stack = stack.select(Phase=phase)
             for key in phase_stack.keys():
-                print key, phase_stack.dimension_labels
                 key_slice = list(key)
                 key_slice[stack.dim_index('Orientation')] = slice(None)
                 sliced_stack = stack[tuple(key_slice)]
