@@ -29,7 +29,7 @@ from topo.misc.commandline import global_params as script_p
 p = p if locals().get('p', False) and p.name=='global_params' else script_p
 p.add(
 
-    dataset=param.ObjectSelector(default='Nature',objects=
+    dataset=param.ObjectSelector(default='Gaussian',objects=
         ['Gaussian','Nature','NoisyDiskstoNatural'],doc="""
         Set of input patterns to use::
 
