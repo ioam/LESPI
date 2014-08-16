@@ -12,7 +12,7 @@ from dataviews.collector import AttrTree
 
 from imagen import Composite, RawRectangle
 
-from featuremapper.analysis.curves import SizeTuningPeaks, SizeTuningShift,\
+from featuremapper.analysis.spatialtuning import SizeTuningPeaks, SizeTuningShift,\
     OrientationContrastAnalysis
 from featuremapper.command import FeatureCurveCommand, DistributionStatisticFn, \
     measure_size_response, measure_orientation_contrast, DSF_MaxValue, \
