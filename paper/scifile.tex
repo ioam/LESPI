@@ -1,0 +1,179 @@
+% Use only LaTeX2e, calling the article.cls class and 12-point type.
+
+\documentclass[12pt]{article}
+
+% Users of the {thebibliography} environment or BibTeX should use the
+% scicite.sty package, downloadable from *Science* at
+% www.sciencemag.org/about/authors/prep/TeX_help/ .
+% This package should properly format in-text
+% reference calls and reference-list numbers.
+
+\usepackage{scicite}
+
+% Use times if you have the font installed; otherwise, comment out the
+% following line.
+
+\usepackage{times}
+
+% The preamble here sets up a lot of new/revised commands and
+% environments.  It's annoying, but please do *not* try to strip these
+% out into a separate .sty file (which could lead to the loss of some
+% information when we convert the file to other formats).  Instead, keep
+% them in the preamble of your main LaTeX source file.
+
+
+% The following parameters seem to provide a reasonable page setup.
+
+\topmargin 0.0cm
+\oddsidemargin 0.2cm
+\textwidth 16cm 
+\textheight 21cm
+\footskip 1.0cm
+
+
+%The next command sets up an environment for the abstract to your paper.
+
+\newenvironment{sciabstract}{%
+\begin{quote} \bf}
+{\end{quote}}
+
+
+% If your reference list includes text notes as well as references,
+% include the following line; otherwise, comment it out.
+
+\renewcommand\refname{References and Notes}
+
+% The following lines set up an environment for the last note in the
+% reference list, which commonly includes acknowledgments of funding,
+% help, etc.  It's intended for users of BibTeX or the {thebibliography}
+% environment.  Users who are hand-coding their references at the end
+% using a list environment such as {enumerate} can simply add another
+% item at the end, and it will be numbered automatically.
+
+\newcounter{lastnote}
+\newenvironment{scilastnote}{%
+\setcounter{lastnote}{\value{enumiv}}%
+\addtocounter{lastnote}{+1}%
+\begin{list}%
+{\arabic{lastnote}.}
+{\setlength{\leftmargin}{.22in}}
+{\setlength{\labelsep}{.5em}}}
+{\end{list}}
+
+
+% Include your paper's title here
+
+\title{Relating the diversity of interneuronal subtypes to their functional roles in development, homeostasis and sensory processing} 
+
+
+% Place the author information here.  Please hand-code the contact
+% information and notecalls; do *not* use \footnote commands.  Let the
+% author contact information appear immediately below the author names
+% as shown.  We would also prefer that you don't change the type-size
+% settings shown here.
+
+\author
+{Philipp Rudiger,$^{1\ast}$ James A. Bednar,$^{1}$\\
+\\
+\normalsize{$^{1}$Institute for Adaptive and Neural Computation, University of Edinburgh,}\\
+\normalsize{School of Informatics, Edinburgh, EH8 9AB, United Kingdom}\\
+\\
+\normalsize{$^\ast$To whom correspondence should be addressed; E-mail:  P.Rudiger@ed.ac.uk.}
+}
+
+% Include the date command, but leave its argument blank.
+
+\date{}
+
+
+
+%%%%%%%%%%%%%%%%% END OF PREAMBLE %%%%%%%%%%%%%%%%
+
+
+
+\begin{document} 
+
+% Double-space the manuscript.
+
+\baselineskip24pt
+
+% Make the title.
+
+\maketitle 
+
+
+
+% Place your abstract within the special {sciabstract} environment.
+
+\begin{sciabstract}
+A circuit-level understanding of the cortex has long been sought, but
+only recently have improvements in genetic and imaging methods allowed
+systematic investigation of the roles of different interneuron
+classes. In particular, the chemical markers parvalbumin (PV),
+somatostatin (Sst) and vasoactive-intestinal peptide (VIP) have been
+found to divide interneurons into three non-overlapping subtypes that
+roughly correspond to previous, functionally defined subtypes
+\cite{Pfeffer2013}. Studies show roles for these cells in a wide
+array of processes across different time scales, including
+development, homeostasis, and instantaneous sensory responses. We
+present an analysis investigating the involvement of these interneuron
+classes across all of these spatial and temporal scales, using a
+rate-based model of map development in primary visual cortex. The
+model includes the main anatomical and functional properties of the
+two most common GABAergic neuron types in the cortex, PV+ and Sst+
+interneurons \cite{Pfeffer2013}. PV+ neurons receive strong
+feedforward input, provide perisomatic inhibition, and are typically
+only weakly feature selective \cite{Hofer2011}, while Sst+ neurons
+preferentially synapse on distal dendrites and mostly receive input
+from horizontal axons within layer 2/3 \cite{Xu2009}. Sst+ neurons
+are driven by facilitating synapses, and thus respond strongly only
+for high contrasts or large stimuli \cite{Adesnik2012}, giving them
+lower firing rates, stronger feature preference, and longer response
+latencies. The model allows us to link particular properties of these
+inhibitory neurons to specific functional roles, through parameter
+space exploration and lesion studies. The results show that the fast
+response of PV+ neurons makes them suited to balance feedforward
+excitation, while their broad activation helps sparsify cortical
+activity. This suggests a central role of PV+ neurons in map
+development and maintaining stability in the early sensory
+response. In contrast, Sst+ neurons are primarily recruited under high
+contrast or large stimuli, which results in a contrast-dependent
+switch in surround modulation from facilitation to
+suppression. Overall, our analysis suggests that PV+ neurons are
+central to organized development and balancing the instantaneous
+response, while Sst+ neurons integrate over larger temporal and
+spatial scales and mediate a range of surround modulation effects.
+\end{sciabstract}
+
+
+
+% In setting up this template for *Science* papers, we've used both
+% the \section* command and the \paragraph* command for topical
+% divisions.  Which you use will of course depend on the type of paper
+% you're writing.  Review Articles tend to have displayed headings, for
+% which \section* is more appropriate; Research Articles, when they have
+% formal topical divisions at all, tend to signal them with bold text
+% that runs into the paragraph, for which \paragraph* is the right
+% choice.  Either way, use the asterisk (*) modifier, as shown, to
+% suppress numbering.
+
+\section*{Introduction}
+
+
+% Your references go at the end of the main text, and before the
+% figures.  For this document we've used BibTeX, the .bib file
+% scibib.bib, and the .bst file Science.bst.  The package scicite.sty
+% was included to format the reference numbers according to *Science*
+% style.
+
+
+\bibliography{scifile}
+
+\bibliographystyle{Science}
+
+\clearpage
+
+
+
+
+\end{document}
