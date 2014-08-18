@@ -64,19 +64,23 @@ p.add(
                            inclusive_bounds=(False,True),doc="""
                            V1 excitatory layer afferent learning rate."""),
 
-    lat_loc_strength=param.Number(default=3.0,doc="""Local excitatory connection strength"""),
+    lat_loc_strength=param.Number(default=3.5,doc="""Local excitatory connection strength"""),
 
-    lat_pv_strength=param.Number(default=3.25,doc="""Lateral PV excitatory projection strength"""),
+    lat_pv_strength=param.Number(default=3.0,doc="""Lateral PV excitatory projection strength"""),
 
-    pv_strength=param.Number(default=3.25,doc="""PV Divisive GC strength """),
+    pv_strength=param.Number(default=3.5, doc="""PV Divisive GC strength """),
 
     lgn_aff_str=param.Number(default=10.0),
 
-    lgn2v1_str=param.Number(default=2.5),
+    lgn2v1_str=param.Number(default=3.0),
 
     lgn2pv_str=param.Number(default=2.0),
 
-    pv_pv_strength = param.Number(default=0.5))
+    pv_pv_strength=param.Number(default=0.8),
+
+    t_init=param.Number(default=0.15),
+
+    target_activity=param.Number(default=0.015))
 
 # Specify weight initialization, response function, and learning function
 projection.CFProjection.cf_shape=pattern.Disk(smoothing=0.0)
@@ -136,7 +140,7 @@ topo.sim['V1Exc']=MultiPortSheet(precedence=0.6,
                                  nominal_density=p.cortex_density,
                                  nominal_bounds=sheet.BoundingBox(radius=p.area/2),
                                  plastic=True,measure_maps=True,
-                                 output_fns=[transferfn.misc.HomeostaticResponse()])
+                                 output_fns=[transferfn.misc.HomeostaticResponse(t_init=p.t_init, target_activity=p.target_activity)])
 
 topo.sim['V1Exc'].joint_norm_fn=topo.sheet.optimized.compute_joint_norm_totals_opt
 
@@ -175,15 +179,15 @@ topo.sim.connect('LGNOn','V1Exc',delay=0.04,
                  dest_port=('Activity','JointNormalize', 'Afferent'),
                  connection_type=projection.CFProjection,strength=p.lgn2v1_str,name='LGNOnAfferent',
                  output_fns=[],
-                 weights_generator=GaussianAdditiveCloud(gaussian_size=0.25),
-                 nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr*2.0)
+                 weights_generator=pattern.random.GaussianCloud(gaussian_size=1.0),
+                 nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr)
 
 topo.sim.connect('LGNOff','V1Exc',delay=0.04,
                  dest_port=('Activity','JointNormalize', 'Afferent'),
                  connection_type=projection.CFProjection,strength=p.lgn2v1_str,name='LGNOffAfferent',
                  output_fns=[],
-                 weights_generator=GaussianAdditiveCloud(gaussian_size=0.25),
-                 nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr*2.0)
+                 weights_generator=pattern.random.GaussianCloud(gaussian_size=1.0),
+                 nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr)
 
 # LGN -> V1 PV+ Layer
 
@@ -191,14 +195,14 @@ topo.sim.connect('LGNOn','V1PV',delay=0.04,
                  dest_port=('Activity','JointNormalize', 'Afferent'),
                  connection_type=projection.CFProjection,strength=p.lgn2pv_str,name='PVLGNOnAfferent',
                  output_fns=[],
-                 weights_generator=GaussianAdditiveCloud(gaussian_size=0.25),
+                 weights_generator=pattern.random.GaussianCloud(gaussian_size=1.0),
                  nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr)
 
 topo.sim.connect('LGNOff','V1PV',delay=0.04,
                  dest_port=('Activity','JointNormalize', 'Afferent'),
                  connection_type=projection.CFProjection,strength=p.lgn2pv_str,name='PVLGNOffAfferent',
                  output_fns=[],
-                 weights_generator=GaussianAdditiveCloud(gaussian_size=0.25),
+                 weights_generator=pattern.random.GaussianCloud(gaussian_size=1.0),
                  nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr)
 
 ## Intra V1 connections
@@ -208,8 +212,8 @@ topo.sim.connect('LGNOff','V1PV',delay=0.04,
 topo.sim.connect('V1Exc','V1Exc',delay=0.04,
                  connection_type=projection.CFProjection,strength=p.lat_loc_strength,
                  name='LateralExcitatory_local',
-                 weights_generator=topo.pattern.Gaussian(aspect_ratio=1.0, size=0.07),
-                 nominal_bounds_template=sheet.BoundingBox(radius=0.07),
+                 weights_generator=topo.pattern.Gaussian(aspect_ratio=1.0, size=0.087),
+                 nominal_bounds_template=sheet.BoundingBox(radius=0.1),
                  learning_rate=0)
 
 # V1 PV+ Layer to V1 Exc
@@ -217,20 +221,20 @@ topo.sim.connect('V1Exc','V1Exc',delay=0.04,
 topo.sim.connect('V1Exc','V1PV',delay=0.04,
                  connection_type=projection.CFProjection,strength=p.lat_pv_strength,
                  name='V1Exc2V1PV',
-                 weights_generator=topo.pattern.Gaussian(aspect_ratio=1.0, size=0.07),
-                 nominal_bounds_template = sheet.BoundingBox(radius=0.15),learning_rate=0.5)
+                 weights_generator=topo.pattern.Gaussian(aspect_ratio=1.0, size=0.087),
+                 nominal_bounds_template = sheet.BoundingBox(radius=0.1),learning_rate=0.25)
 
 topo.sim.connect('V1PV','V1Exc',delay=0.04,
                  connection_type=projection.CFProjection,strength=p.pv_strength, name='V1PV2V1Exc',
-                 weights_generator=topo.pattern.Gaussian(aspect_ratio=1.0, size=0.3),
+                 weights_generator=topo.pattern.Gaussian(aspect_ratio=1.0, size=0.22917),
                  activity_group=(0.8,DivideWithConstant(c=1.0)),
-                 nominal_bounds_template = sheet.BoundingBox(radius=0.225),learning_rate=0.5)
+                 nominal_bounds_template = sheet.BoundingBox(radius=0.16),learning_rate=0.25)
 
 topo.sim.connect('V1PV','V1PV',delay=0.04,
                  connection_type=projection.CFProjection,strength=p.pv_pv_strength, name='V1PV2V1PV',
-                 weights_generator=topo.pattern.Gaussian(aspect_ratio=1.0, size=0.3),
+                 weights_generator=topo.pattern.Gaussian(aspect_ratio=1.0, size=0.22917),
                  activity_group=(0.8,DivideWithConstant(c=1.0)),
-                 nominal_bounds_template = sheet.BoundingBox(radius=0.225),learning_rate=0.5)
+                 nominal_bounds_template = sheet.BoundingBox(radius=0.16),learning_rate=0.25)
 
 # VSD Response Layer
 
