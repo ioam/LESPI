@@ -1,3 +1,6 @@
+import copy
+from collections import defaultdict
+
 import numpy as np
 
 import param
@@ -5,8 +8,10 @@ import param
 from imagen import Composite, Gaussian, Disk
 from imagen.random import UniformRandom
 
+import topo
 from topo.base.simulation import EPConnectionEvent
 from topo.sheet import JointNormalizingCFSheet_Continuous
+
 
 class MultiPortSheet(JointNormalizingCFSheet_Continuous):
     """
@@ -15,7 +20,6 @@ class MultiPortSheet(JointNormalizingCFSheet_Continuous):
     """
 
     src_ports = ['Activity', 'Subthreshold']
-
 
     def activate(self):
         """
@@ -161,3 +165,129 @@ class GaussianAdditiveCloud(Composite):
         mat = mat - mat.min()
 
         return mat/mat.max()
+
+from topo.transferfn.misc import TransferFnWithState
+
+
+class SynapticScaling(TransferFnWithState):
+    """
+    SynapticScaling is a homeostatic mechanism to scale
+    excitatory input onto inhibitory neurons to maintain
+    a constant level of activity in a network with both
+    excitatory and inhibitory neurons.
+    """
+
+    s_init = param.Number(default=1.0,doc="""
+        Initial value of the threshold value t.""")
+
+    randomized_init = param.Boolean(False,doc="""
+        Whether to randomize the initial t parameter.""")
+
+    seed = param.Integer(default=42, doc="""
+       Random seed used to control the initial randomized scaling
+       factors.""")
+
+    target_activity = param.Number(default=0.024,doc="""
+        The target average activity.""")
+
+    learning_rate = param.Number(default=0.01,doc="""
+        Learning rate for homeostatic plasticity.""")
+
+    smoothing = param.Number(default=0.991,doc="""
+        Weighting of previous activity vs. current activity when
+        calculating the average activity.""")
+
+    noise_magnitude =  param.Number(default=0.1,doc="""
+        The magnitude of the additive noise to apply to the s_init
+        parameter at initialization.""")
+
+    period = param.Number(default=1.0, constant=True, doc="""
+        How often the synaptic scaling factor should be adjusted.
+
+        If the period is 0, the threshold is adjusted continuously, each
+        time this TransferFn is called.
+
+        For nonzero periods, adjustments occur only the first time
+        this TransferFn is called after topo.sim.time() reaches an
+        integer multiple of the period.
+
+        For example, if period is 2.5 and the TransferFn is evaluated
+        every 0.05 simulation time units, the threshold will be
+        adjusted at times 2.55, 5.05, 7.55, etc.""")
+
+
+    def __init__(self,**params):
+        super(SynapticScaling,self).__init__(**params)
+        self.first_call = True
+        self.__current_state_stack=[]
+        self.t=None     # To allow state_push at init
+        self.y_avg=None # To allow state_push at init
+
+        next_timestamp = topo.sim.time() + self.period
+        self._next_update_timestamp = topo.sim.convert_to_time_type(next_timestamp)
+        self._y_avg_prev = None
+        self._x_prev = None
+
+
+    def _initialize(self,x):
+        self._x_prev = np.copy(x)
+        self._y_avg_prev = np.ones(x.shape, x.dtype.char) * self.target_activity
+
+        if self.randomized_init:
+            self.t = np.ones(x.shape, x.dtype.char) * self.s_init + \
+                (topo.pattern.random.UniformRandom( \
+                    random_generator=np.random.RandomState(seed=self.seed)) \
+                     (xdensity=x.shape[0],ydensity=x.shape[1]) \
+                     -0.5)*self.noise_magnitude*2
+        else:
+            self.t = np.ones(x.shape, x.dtype.char) * self.s_init
+        self.y_avg = np.ones(x.shape, x.dtype.char) * self.target_activity
+
+
+    def _apply_scaling(self,x):
+        """Applies the piecewise-linear thresholding operation to the activity."""
+        x *= self.t
+
+    def _update_scalefactor(self, prev_t, x, prev_avg, smoothing, learning_rate, target_activity):
+        """
+        Applies exponential smoothing to the given current activity and previous
+        smoothed value following the equations given in the report cited above.
+
+        If plastic is set to False, the running exponential average
+        values and thresholds are not updated.
+        """
+        y_avg = (1.0-smoothing)*x + smoothing*prev_avg
+        t = prev_t + learning_rate * (target_activity - y_avg)
+        t = np.clip(t, 0, 2)
+        return (y_avg, t) if self.plastic else (prev_avg, prev_t)
+
+
+    def __call__(self,x):
+        """Initialises on the first call and then applies homeostasis."""
+        if self.first_call: self._initialize(x); self.first_call = False
+
+        if (topo.sim.time() > self._next_update_timestamp):
+            self._next_update_timestamp += self.period
+            # Using activity matrix and and smoothed activity from *previous* call.
+            (self.y_avg, self.t) = self._update_scalefactor(self.t, self._x_prev, self._y_avg_prev,
+                                                            self.smoothing, self.learning_rate,
+                                                            self.target_activity)
+            self._y_avg_prev = self.y_avg   # Copy only if not in continuous mode
+
+        self._apply_scaling(x)            # Apply the threshold only after it is updated
+        self._x_prev[...,...] = x[...,...]  # Recording activity for the next periodic update
+
+
+    def state_push(self):
+        self.__current_state_stack.append((copy.copy(self.t),
+                                           copy.copy(self.y_avg),
+                                           copy.copy(self.first_call),
+                                           copy.copy(self._next_update_timestamp),
+                                           copy.copy(self._y_avg_prev),
+                                           copy.copy(self._x_prev)))
+        super(SynapticScaling, self).state_push()
+
+    def state_pop(self):
+        (self.t, self.y_avg, self.first_call, self._next_update_timestamp,
+        self._y_avg_prev, self._x_prev) = self.__current_state_stack.pop()
+        super(SynapticScaling, self).state_pop()
