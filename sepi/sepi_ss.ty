@@ -1,0 +1,258 @@
+"""
+LESI model - long range excitatory, short range inhibitory
+Two layer model with one inhibitory and one excitatory sheet.
+Recurrent short range connections between sheets, long range excitation and short range inhibition
+"""
+
+from math import pi
+
+import numpy
+import param
+
+from components import GaussianAdditiveCloud, MultiPortSheet, SynapticScaling
+
+from topo import learningfn, numbergen, transferfn, pattern, projection, \
+    responsefn, sheet
+
+import topo.learningfn.optimized
+import topo.transferfn.optimized
+import topo.pattern.random
+import topo.pattern.image
+import topo.responsefn.optimized
+import topo.sheet.optimized
+
+import topo.transferfn.misc
+from topo.base.arrayutil import DivideWithConstant
+
+# Parameters that can be passed on the command line using -p
+from topo.misc.commandline import global_params as script_p
+p = p if locals().get('p', False) and p.name=='global_params' else script_p
+p.add(
+
+    dataset=param.ObjectSelector(default='Gaussian',objects=
+        ['Gaussian','Nature','NoisyDiskstoNatural'],doc="""
+        Set of input patterns to use::
+
+          :'Gaussian':            Two-dimensional Gaussians
+          :'Nature':              Shouval's 1999 monochrome 256x256 images
+          :'NoisyDiskstoNatural': Noisy disks + Nature images"""),
+
+    scale = param.Number(default=0.7),
+
+    num_inputs=param.Integer(default=2,bounds=(1,None),doc="""
+        How many input patterns to present per unit area at each
+        iteration, when using discrete patterns (e.g. Gaussians)."""),
+
+    area=param.Number(default=3.0,bounds=(0,None),
+        inclusive_bounds=(False,True),doc="""
+        Linear size of cortical area to simulate.
+        2.0 gives a 2.0x2.0 Sheet area in V1."""),
+
+    retinal_density=param.Number(default=24.0,bounds=(0,None),
+        inclusive_bounds=(False,True),doc="""
+        The nominal_density to use for the retina."""),
+
+    lgn_density=param.Number(default=24.0,bounds=(0,None),
+        inclusive_bounds=(False,True),doc="""
+        The nominal_density to use for the LGN."""),
+
+    cortex_density=param.Number(default=48.0,bounds=(0,None),
+        inclusive_bounds=(False,True),doc="""
+        The nominal_density to use for the V1 layers."""),
+
+    v1_aff_lr=param.Number(default=0.2,bounds=(0,None),
+                           inclusive_bounds=(False,True),doc="""
+                           V1 excitatory layer afferent learning rate."""),
+
+    lat_loc_strength=param.Number(default=3.0,doc="""Local excitatory connection strength"""),
+
+    lat_pv_strength=param.Number(default=2.25,doc="""Lateral PV excitatory projection strength"""),
+
+    pv_strength=param.Number(default=3.5, doc="""PV Divisive GC strength """),
+
+    lgn_aff_str=param.Number(default=10.0),
+
+    lgn2v1_str=param.Number(default=3.0),
+
+    lgn2pv_str=param.Number(default=2.0),
+
+    pv_pv_strength=param.Number(default=0.8),
+
+    t_init=param.Number(default=0.12),
+
+    target_activity=param.Number(default=0.015))
+
+# Specify weight initialization, response function, and learning function
+projection.CFProjection.cf_shape=pattern.Disk(smoothing=0.0)
+projection.CFProjection.weights_generator=topo.pattern.Constant()
+projection.CFProjection.response_fn=responsefn.optimized.CFPRF_DotProduct_opt()
+projection.CFProjection.learning_fn=learningfn.optimized.CFPLF_Hebbian_opt()
+projection.CFProjection.weights_output_fns=[transferfn.optimized.CFPOF_DivisiveNormalizeL1_opt()]
+projection.SharedWeightCFProjection.response_fn=responsefn.optimized.CFPRF_DotProduct_opt()
+
+### Input patterns
+if p.dataset=="Gaussian":
+    input_type=pattern.Gaussian
+    total_num_inputs=int(p.num_inputs*p.area*p.area)
+    inputs=[input_type(x=numbergen.UniformRandom(lbound=-(p.area/2.0+0.25),
+                                                 ubound= (p.area/2.0+0.25),seed=12+i),
+                       y=numbergen.UniformRandom(lbound=-(p.area/2.0+0.25),
+                                                 ubound= (p.area/2.0+0.25),seed=35+i),
+                       orientation=numbergen.UniformRandom(lbound=-pi,ubound=pi,seed=21+i),
+                       size=0.2, aspect_ratio=4.66667, scale=p.scale)
+            for i in xrange(total_num_inputs)]
+
+    combined_inputs = pattern.SeparatedComposite(min_separation=0,generators=inputs)
+
+elif p.dataset=="Nature":
+    input_type=pattern.image.FileImage
+    image_filenames=["images/shouval/combined%02d.png"%(i+1) for i in xrange(25)]
+    inputs=[input_type(scale=p.scale,filename=f,
+                       size=10.0, #size_normalization='original',(size=10.0)
+                       x=numbergen.UniformRandom(lbound=-0.75,ubound=0.75,seed=12),
+                       y=numbergen.UniformRandom(lbound=-0.75,ubound=0.75,seed=36),
+                       orientation=numbergen.UniformRandom(lbound=-pi,ubound=pi,seed=65))
+            for f in image_filenames]
+    combined_inputs=pattern.Selector(generators=inputs)
+
+### Sheets
+topo.sim['Retina']=sheet.GeneratorSheet(nominal_density=p.retinal_density,
+                                        input_generator=combined_inputs,
+                                        period=1.0, phase=0.04,
+                                        nominal_bounds=sheet.BoundingBox(radius=p.area/2+0.25+0.25+0.375))
+
+for s in ['LGNOn', 'LGNOff']:
+    topo.sim[s]=sheet.SettlingCFSheet(nominal_density=p.retinal_density,
+                                      nominal_bounds=sheet.BoundingBox(radius=p.area/2.0+0.25+0.5),
+                                      output_fns=[transferfn.misc.HalfRectify()],
+                                      tsettle=2,strict_tsettle=1,measure_maps=False)
+
+    lgn_surroundg = pattern.Gaussian(size=0.8,aspect_ratio=1.0,
+                                     output_fns=[transferfn.DivisiveNormalizeL1()])
+
+    topo.sim.connect(s,s,delay=0.04,name='LateralGC',
+                     dest_port=('Activity'),activity_group=(0.6,DivideWithConstant(c=0.11)),
+                     connection_type=projection.SharedWeightCFProjection,
+                     strength=0.6,weights_generator=lgn_surroundg,
+                     nominal_bounds_template=sheet.BoundingBox(radius=0.4))
+
+
+topo.sim['V1Exc']=MultiPortSheet(precedence=0.6,
+                                 nominal_density=p.cortex_density,
+                                 nominal_bounds=sheet.BoundingBox(radius=p.area/2),
+                                 plastic=True,measure_maps=True,
+                                 output_fns=[transferfn.misc.HomeostaticResponse(t_init=p.t_init, 
+                                                                                 target_activity=p.target_activity)])
+
+topo.sim['V1Exc'].joint_norm_fn=topo.sheet.optimized.compute_joint_norm_totals_opt
+
+topo.sim['V1PV']=MultiPortSheet(precedence=0.7,nominal_density=p.cortex_density,
+                                nominal_bounds=sheet.BoundingBox(radius=p.area/2),measure_maps=False,
+                                plastic=True,output_fns=[transferfn.misc.HalfRectify()])
+
+topo.sim['V1PV'].joint_norm_fn=topo.sheet.optimized.compute_joint_norm_totals_opt
+
+### Connections
+
+## Retina -> LGN
+
+# DoG weights for the LGN
+centerg   = pattern.Gaussian(size=0.2,aspect_ratio=1.0,output_fns=[transferfn.DivisiveNormalizeL1()])
+surroundg = pattern.Gaussian(size=0.8,aspect_ratio=1.0,output_fns=[transferfn.DivisiveNormalizeL1()])
+on_weights = pattern.Composite(generators=[centerg,surroundg],operator=numpy.subtract)
+off_weights = pattern.Composite(generators=[surroundg,centerg],operator=numpy.subtract)
+
+topo.sim.connect('Retina','LGNOn',delay=0.04,
+                 connection_type=projection.SharedWeightCFProjection,strength=p.lgn_aff_str,
+                 nominal_bounds_template=sheet.BoundingBox(radius=0.4),name='Afferent',
+                 weights_generator=on_weights)
+
+topo.sim.connect('Retina','LGNOff',delay=0.04,
+                 connection_type=projection.SharedWeightCFProjection,strength=p.lgn_aff_str,
+                 nominal_bounds_template=sheet.BoundingBox(radius=0.4),name='Afferent',
+                 weights_generator=off_weights)
+
+
+## LGN TO V1 AFFERENTS
+
+
+# LGN -> V1 Exc Layer
+
+topo.sim.connect('LGNOn','V1Exc',delay=0.04,
+                 dest_port=('Activity','JointNormalize', 'Afferent'),
+                 connection_type=projection.CFProjection,strength=p.lgn2v1_str,name='LGNOnAfferent',
+                 output_fns=[],
+                 weights_generator=pattern.random.GaussianCloud(gaussian_size=1.0),
+                 nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr)
+
+topo.sim.connect('LGNOff','V1Exc',delay=0.04,
+                 dest_port=('Activity','JointNormalize', 'Afferent'),
+                 connection_type=projection.CFProjection,strength=p.lgn2v1_str,name='LGNOffAfferent',
+                 output_fns=[],
+                 weights_generator=pattern.random.GaussianCloud(gaussian_size=1.0),
+                 nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr)
+
+# LGN -> V1 PV+ Layer
+
+topo.sim.connect('LGNOn','V1PV',delay=0.04,
+                 dest_port=('Activity','JointNormalize', 'Afferent'),
+                 connection_type=projection.CFProjection,strength=p.lgn2pv_str,name='PVLGNOnAfferent',
+                 output_fns=[],
+                 weights_generator=pattern.random.GaussianCloud(gaussian_size=1.0),
+                 nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr)
+
+topo.sim.connect('LGNOff','V1PV',delay=0.04,
+                 dest_port=('Activity','JointNormalize', 'Afferent'),
+                 connection_type=projection.CFProjection,strength=p.lgn2pv_str,name='PVLGNOffAfferent',
+                 output_fns=[],
+                 weights_generator=pattern.random.GaussianCloud(gaussian_size=1.0),
+                 nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr)
+
+## Intra V1 connections
+
+# V1 Exc Lateral Connections
+
+topo.sim.connect('V1Exc','V1Exc',delay=0.04,
+                 connection_type=projection.CFProjection,strength=p.lat_loc_strength,
+                 name='LateralExcitatory_local',
+                 weights_generator=topo.pattern.Gaussian(aspect_ratio=1.0, size=0.087),
+                 nominal_bounds_template=sheet.BoundingBox(radius=0.1),
+                 learning_rate=0)
+
+# V1 PV+ Layer to V1 Exc
+
+topo.sim.connect('V1Exc','V1PV',delay=0.04,
+                 connection_type=projection.CFProjection,strength=p.lat_pv_strength,
+                 name='V1Exc2V1PV', input_fns=[SynapticScaling(smoothing=0.95, target_activity=p.target_activity)],
+                 weights_generator=topo.pattern.Gaussian(aspect_ratio=1.0, size=0.087),
+                 nominal_bounds_template = sheet.BoundingBox(radius=0.15),learning_rate=0.25)
+
+topo.sim.connect('V1PV','V1Exc',delay=0.04,
+                 connection_type=projection.CFProjection,strength=p.pv_strength, name='V1PV2V1Exc',
+                 weights_generator=topo.pattern.Gaussian(aspect_ratio=1.0, size=0.22917),
+                 activity_group=[(0.8,DivideWithConstant(c=1.0))],
+                 nominal_bounds_template = sheet.BoundingBox(radius=0.16),learning_rate=0.25)
+
+topo.sim.connect('V1PV','V1PV',delay=0.04,
+                 connection_type=projection.CFProjection,strength=p.pv_pv_strength, name='V1PV2V1PV',
+                 weights_generator=topo.pattern.Gaussian(aspect_ratio=1.0, size=0.22917),
+                 activity_group=(0.8,DivideWithConstant(c=1.0)),
+                 nominal_bounds_template = sheet.BoundingBox(radius=0.16),learning_rate=0.25)
+
+# VSD Response Layer
+
+topo.sim['VSDLayer'] = topo.sheet.CFSheet(nominal_density=topo.sim['V1Exc'].nominal_density,
+                                          nominal_bounds= topo.sim['V1Exc'].nominal_bounds)
+
+topo.sim.connect('V1Exc','VSDLayer', src_port='Subthreshold', name='V1ToVSDLayer',
+                 connection_type=topo.projection.OneToOneProjection, delay=0.04)
+
+### Default locations for model editor
+topo.sim.grid_layout([['VSDLayer',    None,     None],
+                      [None,    'V1Exc',     'V1PV'],
+                      ['LGNOn', None,     'LGNOff'],
+                      [None,    'Retina', None]], xstart=150,item_scale=0.8)
+
+import topo.analysis.featureresponses
+topo.analysis.featureresponses.FeatureMaps.selectivity_multiplier=1.0
+topo.analysis.featureresponses.FeatureCurveCommand.contrasts=[10, 100]
