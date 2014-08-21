@@ -209,14 +209,14 @@ topo.sim.connect('LGNOn','V1PV',delay=0.04,
                  connection_type=projection.CFProjection,strength=p.lgn2pv_str,name='PVLGNOnAfferent',
                  output_fns=[],
                  weights_generator=pattern.random.GaussianCloud(gaussian_size=1.0),
-                 nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr/10.)
+                 nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr/5.)
 
 topo.sim.connect('LGNOff','V1PV',delay=0.04,
                  dest_port=('Activity','JointNormalize', 'Afferent'),
                  connection_type=projection.CFProjection,strength=p.lgn2pv_str,name='PVLGNOffAfferent',
                  output_fns=[],
                  weights_generator=pattern.random.GaussianCloud(gaussian_size=1.0),
-                 nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr/10.)
+                 nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr/5.)
 
 ## Intra V1 connections
 
