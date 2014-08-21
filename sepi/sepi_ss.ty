@@ -82,6 +82,8 @@ p.add(
 
     homeostasis=param.Boolean(default=True),
 
+    synaptic_scaling=param.Boolean(default=True),
+
     ss_smoothing = param.Number(default=0.95),
 
     target_activity=param.Number(default=0.02))
@@ -229,9 +231,16 @@ topo.sim.connect('V1Exc','V1Exc',delay=0.04,
 
 # V1 PV+ Layer to V1 Exc
 
+if p.synaptic_scaling:
+    v1exc2pv_inputfns = [SynapticScaling(smoothing=p.ss_smoothing,
+                                         target_activity=p.target_activity)]
+else:
+    v1exc2pv_inputfns = []
+
+
 topo.sim.connect('V1Exc','V1PV',delay=0.04,
                  connection_type=projection.CFProjection,strength=p.lat_pv_strength,
-                 name='V1Exc2V1PV', input_fns=[SynapticScaling(smoothing=p.ss_smoothing, target_activity=p.target_activity)],
+                 name='V1Exc2V1PV', input_fns=v1exc2pv_inputfns,
                  weights_generator=topo.pattern.Gaussian(aspect_ratio=1.0, size=0.087),
                  nominal_bounds_template = sheet.BoundingBox(radius=0.15),learning_rate=0.25)
 
