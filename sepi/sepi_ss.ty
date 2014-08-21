@@ -1,7 +1,5 @@
 """
-LESI model - long range excitatory, short range inhibitory
-Two layer model with one inhibitory and one excitatory sheet.
-Recurrent short range connections between sheets, long range excitation and short range inhibition
+Short-range Excitation Parvalbumin Inhibition Model
 """
 
 from math import pi
@@ -84,7 +82,9 @@ p.add(
 
     synaptic_scaling=param.Boolean(default=True),
 
-    ss_smoothing = param.Number(default=0.95),
+    ss_smoothing = param.Number(default=0.991),
+
+    learning_rate = param.Number(default=0.01),
 
     target_activity=param.Number(default=0.02))
 
@@ -100,10 +100,10 @@ projection.SharedWeightCFProjection.response_fn=responsefn.optimized.CFPRF_DotPr
 if p.dataset=="Gaussian":
     input_type=pattern.Gaussian
     total_num_inputs=int(p.num_inputs*p.area*p.area)
-    inputs=[input_type(x=numbergen.UniformRandom(lbound=-(p.area/2.0+0.25),
-                                                 ubound= (p.area/2.0+0.25),seed=12+i),
-                       y=numbergen.UniformRandom(lbound=-(p.area/2.0+0.25),
-                                                 ubound= (p.area/2.0+0.25),seed=35+i),
+    inputs=[input_type(x=numbergen.UniformRandom(lbound=-(p.area/2.0+0.5),
+                                                 ubound= (p.area/2.0+0.5),seed=12+i),
+                       y=numbergen.UniformRandom(lbound=-(p.area/2.0+0.5),
+                                                 ubound= (p.area/2.0+0.5),seed=35+i),
                        orientation=numbergen.UniformRandom(lbound=-pi,ubound=pi,seed=21+i),
                        size=0.2, aspect_ratio=4.66667, scale=p.scale)
             for i in xrange(total_num_inputs)]
@@ -150,7 +150,7 @@ else:
 
 topo.sim['V1Exc']=MultiPortSheet(precedence=0.6,
                                  nominal_density=p.cortex_density,
-                                 nominal_bounds=sheet.BoundingBox(radius=p.area/2),
+                                 nominal_bounds=sheet.BoundingBox(radius=p.area/2+0.1),
                                  plastic=True,measure_maps=True,
                                  output_fns=v1_outputfns)
 
@@ -236,7 +236,6 @@ if p.synaptic_scaling:
                                          target_activity=p.target_activity)]
 else:
     v1exc2pv_inputfns = []
-
 
 topo.sim.connect('V1Exc','V1PV',delay=0.04,
                  connection_type=projection.CFProjection,strength=p.lat_pv_strength,
