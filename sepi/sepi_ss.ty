@@ -84,7 +84,7 @@ p.add(
 
     ss_smoothing = param.Number(default=0.991),
 
-    ss_lr = param.Number(default=0.01)),
+    ss_lr = param.Number(default=0.01),
 
     target_activity=param.Number(default=0.02))
 
