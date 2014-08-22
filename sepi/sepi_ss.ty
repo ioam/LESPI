@@ -84,7 +84,7 @@ p.add(
 
     ss_smoothing = param.Number(default=0.991),
 
-    learning_rate = param.Number(default=0.01),
+    ss_lr = param.Number(default=0.01)),
 
     target_activity=param.Number(default=0.02))
 
@@ -143,7 +143,8 @@ for s in ['LGNOn', 'LGNOff']:
                      nominal_bounds_template=sheet.BoundingBox(radius=0.4))
 
 if p.homeostasis:
-    v1_outputfns = [transferfn.misc.HomeostaticResponse(t_init=p.t_init,target_activity=p.target_activity)]
+    v1_outputfns = [transferfn.misc.HomeostaticResponse(t_init=p.t_init,
+                                                        target_activity=p.target_activity)]
 else:
     v1_outputfns = [transferfn.misc.HalfRectify(t_init=p.t_init)]
 
@@ -232,7 +233,8 @@ topo.sim.connect('V1Exc','V1Exc',delay=0.04,
 # V1 PV+ Layer to V1 Exc
 
 if p.synaptic_scaling:
-    v1exc2pv_inputfns = [SynapticScaling(smoothing=p.ss_smoothing,
+    v1exc2pv_inputfns = [SynapticScaling(learning_rate=p.ss_lr,
+                                         smoothing=p.ss_smoothing,
                                          target_activity=p.target_activity)]
 else:
     v1exc2pv_inputfns = []
