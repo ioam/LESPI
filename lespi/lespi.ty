@@ -94,7 +94,7 @@ p.add(
     pv_pv_strength=param.Number(default=0.75, doc="""
         Recurrent inhibition strength in PV population"""),
 
-    time_delay=param.Number(default=0.1, doc="""
+    time_delay=param.Number(default=0.05, doc="""
         Smallest time delay possible, all delays are multiples of this delay."""))
 
 # Specify weight initialization, response function, and learning function
@@ -150,7 +150,7 @@ lgn_size = p.area/2.0+0.25+0.5
 
 topo.sim['Retina']=sheet.GeneratorSheet(nominal_density=p.subcortical_density,
                                         input_generator=combined_inputs,
-                                        period=1.0, phase=p.time_delay/2.,
+                                        period=1.0, phase=p.time_delay,
                                         nominal_bounds=sheet.BoundingBox(radius=retina_size))
 
 
@@ -164,7 +164,7 @@ for s in ['LGNOn', 'LGNOff']:
     lgn_surroundg = pattern.Gaussian(size=0.8, aspect_ratio=1.0,
                                      output_fns=[transferfn.DivisiveNormalizeL1()])
 
-    topo.sim.connect(s, s, delay=p.time_delay/2., name='LateralGC',
+    topo.sim.connect(s, s, delay=p.time_delay, name='LateralGC',
                      dest_port=('Activity'), activity_group=(0.6, DivideWithConstant(c=0.11)),
                      connection_type=projection.SharedWeightCFProjection,
                      strength=0.6, weights_generator=lgn_surroundg,
@@ -173,7 +173,7 @@ for s in ['LGNOn', 'LGNOff']:
 
 topo.sim['V1Exc']=MultiPortSheet(precedence=0.6,
                                  nominal_density=p.cortex_density,
-                                 nominal_bounds=sheet.BoundingBox(radius=p.area/2+0.1),
+                                 nominal_bounds=sheet.BoundingBox(radius=p.area/2.),
                                  plastic=True,measure_maps=True,
                                  output_fns=[transferfn.misc.HomeostaticResponse(t_init=0.12,
                                                                                  target_activity=0.02)])
@@ -188,8 +188,9 @@ topo.sim['V1PV'].joint_norm_fn=topo.sheet.optimized.compute_joint_norm_totals_op
 
 if p.lateral:
     topo.sim['V1SOM']=MultiPortSheet(precedence=0.8, nominal_density=p.cortex_density,
-                                     nominal_bounds=sheet.BoundingBox(radius=p.area/2.+0.1),
-                                     output_fns=[transferfn.HalfRectifyAndPower(e=1.5)])
+                                     nominal_bounds=sheet.BoundingBox(radius=p.area/2.),
+                                     output_fns=[transferfn.HalfRectifyAndPower(e=1.5),
+                                                 transferfn.Hysteresis(time_constant=0.2)])
 
 ### Connections
 
@@ -204,12 +205,12 @@ surroundg = pattern.Gaussian(size=0.8, aspect_ratio=1.0,
 on_weights = pattern.Composite(generators=[centerg, surroundg], operator=np.subtract)
 off_weights = pattern.Composite(generators=[surroundg, centerg], operator=np.subtract)
 
-topo.sim.connect('Retina', 'LGNOn', delay=p.time_delay/2.,
+topo.sim.connect('Retina', 'LGNOn', delay=p.time_delay,
                  connection_type=projection.SharedWeightCFProjection, strength=p.lgn_aff_str,
                  nominal_bounds_template=sheet.BoundingBox(radius=0.4), name='Afferent',
                  weights_generator=on_weights)
 
-topo.sim.connect('Retina', 'LGNOff', delay=p.time_delay/2.,
+topo.sim.connect('Retina', 'LGNOff', delay=p.time_delay,
                  connection_type=projection.SharedWeightCFProjection, strength=p.lgn_aff_str,
                  nominal_bounds_template=sheet.BoundingBox(radius=0.4), name='Afferent',
                  weights_generator=off_weights)
@@ -219,14 +220,14 @@ topo.sim.connect('Retina', 'LGNOff', delay=p.time_delay/2.,
 
 # LGN -> V1 Exc Layer
 
-topo.sim.connect('LGNOn','V1Exc',delay=p.time_delay/2.,
+topo.sim.connect('LGNOn','V1Exc',delay=p.time_delay,
                  dest_port=('Activity','JointNormalize', 'Afferent'),
                  connection_type=projection.CFProjection,strength=p.lgn2v1_str,name='LGNOnAfferent',
                  output_fns=[],
                  weights_generator=pattern.random.GaussianCloud(gaussian_size=1.0),
                  nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr)
 
-topo.sim.connect('LGNOff','V1Exc',delay=p.time_delay/2.,
+topo.sim.connect('LGNOff','V1Exc',delay=p.time_delay,
                  dest_port=('Activity','JointNormalize', 'Afferent'),
                  connection_type=projection.CFProjection,strength=p.lgn2v1_str,name='LGNOffAfferent',
                  output_fns=[],
@@ -235,14 +236,14 @@ topo.sim.connect('LGNOff','V1Exc',delay=p.time_delay/2.,
 
 # LGN -> V1 PV+ Layer
 
-topo.sim.connect('LGNOn','V1PV',delay=p.time_delay/2.,
+topo.sim.connect('LGNOn','V1PV',delay=p.time_delay,
                  dest_port=('Activity','JointNormalize', 'Afferent'),
                  connection_type=projection.CFProjection,strength=p.lgn2pv_str,name='PVLGNOnAfferent',
                  output_fns=[],
                  weights_generator=pattern.random.GaussianCloud(gaussian_size=1.0),
                  nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr/6.)
 
-topo.sim.connect('LGNOff','V1PV',delay=p.time_delay/2.,
+topo.sim.connect('LGNOff','V1PV',delay=p.time_delay,
                  dest_port=('Activity','JointNormalize', 'Afferent'),
                  connection_type=projection.CFProjection,strength=p.lgn2pv_str,name='PVLGNOffAfferent',
                  output_fns=[],
@@ -308,7 +309,7 @@ topo.sim.connect('V1PV','V1PV',delay=p.time_delay,
 if p.lateral:
     topo.sim.connect('V1SOM', 'V1Exc', delay=p.time_delay, name='V1SOM2V1Exc',
                      connection_type=projection.CFProjection, strength=p.som_strength,
-                     activity_group=[(0.9, DivideWithConstant(c=1.0)), (0.5, np.add, 'Modulatory')],
+                     activity_group=[(0.9, DivideWithConstant(c=1.0))],
                      weights_generator=topo.pattern.Gaussian(aspect_ratio=1.0, size=0.087),
                      nominal_bounds_template=sheet.BoundingBox(radius=0.1), learning_rate=0)
 
