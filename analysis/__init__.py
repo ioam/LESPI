@@ -4,19 +4,20 @@ import pandas
 import param
 from param import ParameterizedFunction, ParamOverrides
 
-from dataviews.interface.pandas import DFrame, DFrameStack
 from dataviews.options import options, PlotOpts
 from dataviews import SheetStack, SheetView
 from dataviews.ipython.widgets import ProgressBar
 from dataviews.collector import AttrTree
+from dataviews.interface.pandas import DFrameStack
+from dataviews.interface.seaborn import DFrame
 
 from imagen import Composite, RawRectangle
 
 from featuremapper.analysis.spatialtuning import SizeTuningPeaks, SizeTuningShift,\
-    OrientationContrastAnalysis
+    OrientationContrastAnalysis, FrequencyTuningAnalysis
 from featuremapper.command import FeatureCurveCommand, DistributionStatisticFn, \
     measure_size_response, measure_orientation_contrast, DSF_MaxValue, \
-    UnitCurveCommand, MeasureResponseCommand
+    UnitCurveCommand, MeasureResponseCommand, measure_frequency_response
 import featuremapper.features as f
 
 import topo
@@ -136,6 +137,77 @@ class measure_size_tuning(UnitMeasurements):
             contrast_stack = DFrameStack((topo.sim.time(), DFrame(css_df, label='Contrast Size Tuning Shift')),
                                      dimensions=['Time'])
             results.set_path(('ContrastShift', p.output), contrast_stack)
+
+        return results
+
+
+class measure_frequency_tuning(UnitMeasurements):
+
+    coords = param.List(default=[(0, 0)])
+
+    contrasts = param.List(default=[50, 100])
+
+    max_freq = param.Number(default=5.0)
+
+    max_ordiff = param.Number(default=np.pi/8)
+
+    size = param.Number(default=1.0)
+
+    num_freq = param.Integer(default=31)
+
+    num_phase = param.Integer(default=8)
+
+    output = param.String(default='V1')
+
+    relative_roi = param.NumericTuple(default=(-0.15, -0.15, 0.15, 0.15))
+
+    def __call__(self, orpref, **params):
+        p = param.ParamOverrides(self, params)
+
+        coords, lbrt_offsets, cols, rows = self._compute_roi(p)
+        lo, bo, ro, to = lbrt_offsets
+
+        size_dataframes = []
+
+        measurement_params = dict(max_frequencies=p.max_freq, size=p.size,
+                                  num_freq=p.num_freq, num_phase=p.num_phase,
+                                  outputs=[p.output], contrasts=p.contrasts)
+        results = AttrTree()
+        for coord in coords:
+            data = measure_frequency_response(coords=[coord], **measurement_params)
+
+            # Compute relative offsets from the measured coordinate
+            lbrt = (coord[0]+lo, coord[1]+bo, coord[0]+ro, coord[1]+to)
+
+            freq_grid = data.Frequency[p.output].grid_sample(cols, rows, lbrt=lbrt, collate='Frequency')
+            freq_data = FrequencyTuningAnalysis(freq_grid)
+            freq_df = freq_data.dframe()
+
+            # Filter out values with significantly different OR preferences
+            ref_orpref = orpref.last[coord]
+            ortables = orpref.grid_sample(rows, cols, lbrt=lbrt)
+            or_df = ortables[topo.sim.time(), :].dframe()
+            or_df.rename(columns={'X': 'Grid_X', 'Y': 'Grid_Y'}, inplace=True)
+            freq_df = pandas.merge(freq_df, or_df, on=['Grid_X', 'Grid_Y', 'Time', 'Duration'])
+            filter_condition = (np.abs(freq_df['Orientation_Preference'] - ref_orpref) % np.pi) < p.max_ordiff
+            freq_df = freq_df[filter_condition]
+            size_dataframes.append(freq_df)
+
+            # Add Size Response to results
+            path = ('FrequencyResponse', p.output)
+            freq_response = data.FrequencyTuning[p.output]
+            if path in results:
+                results.FrequencyResponse[p.output].update(freq_response)
+            else:
+                results.set_path(path, freq_response)
+
+        # Stack the Frequency Tuning Data
+        freq_df = pandas.concat(size_dataframes)
+        size_stack = DFrameStack(None, dimensions=['Time', 'Contrast'])
+        for k, cdf in freq_df.groupby(['Contrast']):
+            cdf = cdf.filter(['Peak', 'Bandwidth', 'QFactor', 'Lower', 'Upper'])
+            size_stack[(topo.sim.time(), k)] = DFrame(cdf, label='Frequency Tuning Analysis')
+        results.set_path(('FrequencyTuning', p.output), size_stack)
 
         return results
 
