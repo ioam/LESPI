@@ -179,7 +179,7 @@ class measure_frequency_tuning(UnitMeasurements):
             # Compute relative offsets from the measured coordinate
             lbrt = (coord[0]+lo, coord[1]+bo, coord[0]+ro, coord[1]+to)
 
-            freq_grid = data.Frequency[p.output].grid_sample(cols, rows, lbrt=lbrt, collate='Frequency')
+            freq_grid = data.FrequencyTuning[p.output].grid_sample(cols, rows, lbrt=lbrt, collate='Frequency')
             freq_data = FrequencyTuningAnalysis(freq_grid)
             freq_df = freq_data.dframe()
 
