@@ -10,6 +10,7 @@ from dataviews.ipython.widgets import ProgressBar
 from dataviews.collector import AttrTree
 from dataviews.interface.pandas import DFrameStack
 from dataviews.interface.seaborn import DFrame
+from dataviews.operation import StackOperation
 
 from imagen import Composite, RawRectangle
 
@@ -21,6 +22,21 @@ from featuremapper.command import FeatureCurveCommand, DistributionStatisticFn, 
 import featuremapper.features as f
 
 import topo
+
+
+class SheetReductionCurve(StackOperation):
+    """
+    Takes in a Stack of SheetViews, reduces them using the provided
+    reduce_fn and collates them across the provided dimension.
+    """
+
+    dimension = param.String(default='Time')
+
+    reduce_fn = param.Callable(default=np.mean)
+
+    def _process(self, view):
+        return [view.reduce(X=self.p.reduce_fn, Y=self.p.reduce_fn).collate(self.p.dimension)]
+
 
 # Filter out units with OR prefs significantly different from the measured location
 def filter_unitorpref(df, orpref_stack, max_diff=np.pi/8):
@@ -48,7 +64,6 @@ class UnitMeasurements(MeasureResponseCommand):
         lo, bo, ro, to = p.relative_roi
         cols, rows = (ro - lo) * xd, (to - bo) * yd
         return coords, (lo, bo, ro, to), cols, rows
-
 
 
 class measure_size_tuning(UnitMeasurements):
