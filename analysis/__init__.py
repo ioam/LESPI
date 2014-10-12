@@ -418,7 +418,7 @@ class RFGaborFit(param.ParameterizedFunction):
     the Gabor fit, the fit parameters and residual from the fit.
     """
 
-    max_iterations = param.Integer(default=10000)
+    max_iterations = param.Integer(default=1000)
 
     roi_radius = param.Number(default=None, allow_None=True)
 
@@ -431,9 +431,11 @@ class RFGaborFit(param.ParameterizedFunction):
     def _function(self, (x, y), A=1.0, f=1.7, sig_x=0.1, sig_y=0.2, phase=0, theta=0):
         try:
             x = (x-self.x0) * np.cos(theta) + (y+self.y0)*np.sin(theta)
-            y =  -(x-self.x0) * np.sin(theta) + (y+self.y0)*np.cos(theta)
-            result = (A*np.exp(-(x/np.sqrt(2*sig_x))**2 - (y/np.sqrt(2*sig_y))**2) * np.cos(2*np.pi*f*x + phase)).ravel()
-        except:
+            y = -(x-self.x0) * np.sin(theta) + (y+self.y0)*np.cos(theta)
+            result = (A * np.exp(-(x/np.sqrt(2*sig_x))**2 - (y/np.sqrt(2*sig_y))**2) * np.cos(2*np.pi*f*x + phase)).ravel()
+        except RuntimeError:
+            result = np.ones(x.shape).ravel() * 10000
+        except FloatingPointError:
             result = np.ones(x.shape).ravel() * 10000
         return result
 
