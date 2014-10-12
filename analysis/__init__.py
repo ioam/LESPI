@@ -1,16 +1,18 @@
 import numpy as np
 import pandas
+from scipy.optimize import curve_fit
 
 import param
 from param import ParameterizedFunction, ParamOverrides
 
 from dataviews.options import options, PlotOpts
-from dataviews import SheetStack, SheetView
+from dataviews import SheetStack, SheetView, Table, TableStack
 from dataviews.ipython.widgets import ProgressBar
 from dataviews.collector import AttrTree
 from dataviews.interface.pandas import DFrameStack
 from dataviews.interface.seaborn import DFrame
 from dataviews.operation import StackOperation
+from dataviews.sheetviews import DataGrid
 
 from imagen import Composite, RawRectangle
 
@@ -406,6 +408,85 @@ class measure_phase_tuning(FeatureCurveCommand):
         return [f.Orientation(steps=p.num_orientation, preference_fn=None),
                 f.Phase(steps=p.num_phase),
                 f.Frequency(values=p.frequencies)]
+
+
+
+class RFGaborFit(param.ParameterizedFunction):
+    """
+    RFGaborFit takes a grid of measured RFs as input and attempts
+    to fit a 2D Gabor function to each RF. It returns Grids of
+    the Gabor fit, the fit parameters and residual from the fit.
+    """
+
+    max_iterations = param.Integer(default=10000)
+
+    roi_radius = param.Number(default=None, allow_None=True)
+
+    init_fit = param.NumericTuple(default=(1.0, 1.7, 0.1, 0.2, 0, 0))
+
+    def _validate_rf(self, rf):
+        if not isinstance(rf, SheetView):
+            raise Exception('Supplied views need to be curves.')
+
+    def _function(self, (x, y), A=1.0, f=1.7, sig_x=0.1, sig_y=0.2, phase=0, theta=0):
+        try:
+            x = (x-self.x0) * np.cos(theta) + (y+self.y0)*np.sin(theta)
+            y =  -(x-self.x0) * np.sin(theta) + (y+self.y0)*np.cos(theta)
+            result = (A*np.exp(-(x/np.sqrt(2*sig_x))**2 - (y/np.sqrt(2*sig_y))**2) * np.cos(2*np.pi*f*x + phase)).ravel()
+        except:
+            result = np.ones(x.shape).ravel() * 10000
+        return result
+
+    def __call__(self, grid, **params):
+        self.p = param.ParamOverrides(self, params, allow_extra_keywords=True)
+        results = AttrTree()
+
+        fit_grid = grid.clone()
+        residual_grid = grid.clone()
+        fitvals_grid = DataGrid(grid.bounds, None, xdensity=grid.xdensity, ydensity=grid.ydensity)
+        for idx, ((x, y), sheet_stack) in enumerate(grid.items()):
+            for key, view in sheet_stack.items():
+                processed = self._process(view, dict(grid.key_items((x, y)), **sheet_stack.key_items(key)))
+                if processed is None: continue
+                if (x, y) not in fit_grid:
+                    fit_grid[(x, y)] = sheet_stack.clone({key: processed[0]})
+                    residual_grid[(x, y)] = sheet_stack.clone({key: processed[1]})
+                    fitvals_grid[(x, y)] = TableStack({key: processed[2]}, dimensions=sheet_stack.dimensions)
+                else:
+                    fit_grid[(x, y)][key] = processed[0]
+                    residual_grid[(x, y)][key] = processed[1]
+                    fitvals_grid[(x, y)][key] = processed[2]
+        results.set_path(('RFGaborFit', 'RF_Fit'), fit_grid)
+        results.set_path(('RFGaborFit', 'RF_Residuals'), residual_grid)
+        results.set_path(('RFGaborFit', 'RF_Fit_Values'), fitvals_grid)
+        return results
+
+    def _process(self, rf, key=None):
+        if hasattr(rf, 'situated'):
+            rf = rf.situated
+        self._validate_rf(rf)
+
+        x, y = key['X'], key['Y']
+        self.x0, self.y0 = x, y
+        l, b, r, t = rf.lbrt
+        if self.p.roi_radius:
+            off = self.p.roi_radius
+            rf = rf[x-off:x+off, y-off:y+off]
+        data = rf.data - rf.data.mean()
+        rows, cols = data.shape
+
+        xs, ys = np.linspace(l, r, cols), np.linspace(b, t, rows)
+        xs, ys = np.meshgrid(xs, ys)
+        try:
+            fit, pcov = curve_fit(self._function, (xs, ys), data.ravel(), self.p.init_fit, maxfev=self.max_iterations)
+        except RuntimeError:
+            return None
+        fit_data = self._function((xs, ys), *fit).reshape(rows, cols)
+        nx, ny= (fit[1] * fit[2], fit[1] * fit[3])
+        residual = data - fit_data
+        fit_table = Table(dict(zip(['A', 'f', 'sig_x', 'sig_y', 'phase','theta'], fit), **{'nx':nx, 'ny': ny, 'residual': np.sum(np.abs(residual))}))
+
+        return [rf.clone(fit_data), rf.clone(residual, label='Residual'), fit_table]
 
 
 
