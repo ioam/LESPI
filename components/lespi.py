@@ -12,19 +12,8 @@ from topo.submodel import Model
 
 from components import MultiPortSheet
 
-
 @Model.definition
-class ModelLESPI(EarlyVisionModel):
-    """
-    Long-range excitation, Somatostatin (Sst) and Parvalbumin (Pv)
-    inhibition model (LESPI). The model reduces to the simpler,
-    Short-range excitation, Parvalbumin inhibition model (SEPI),
-    when the lateral flag is disabled. The SEPI model accurately
-    captures the anatomy of layer 4 in V1 and exhibits robust
-    and stable map development in a dual population model. The
-    long-range interactions in the full LESPI model enable numerous
-    surround modulation effects.
-    """
+class ModelSEPI(EarlyVisionModel):
 
     area = param.Number(default=2.0,bounds=(0,None),
         inclusive_bounds=(False,True),doc="""
@@ -42,15 +31,8 @@ class ModelLESPI(EarlyVisionModel):
         Whether or not the homeostatic adaption should be
         applied in V1""")
 
-    laterals = param.Boolean(default=True, doc="""
-        Instantiate long-range lateral connections. Expensive!""")
-
-    vsd = param.Boolean(default=False, doc="""
-       Whether to enable a VSD sheet with contributions from
-       all cell types.""")
-
     t_init = param.Number(default=0.15, doc="""
-        The initial V1 threshold value. This value is static 
+        The initial V1 threshold value. This value is static
         in the L and GCL models and adaptive in the AL and
         SCAL models.""")
 
@@ -65,10 +47,10 @@ class ModelLESPI(EarlyVisionModel):
     lgnaff_str=param.Number(default=10.0, doc="""
         Retinal afferent strength""")
 
-    lgn2exc_str=param.Number(default=3.0, doc="""
+    lgn2exc_str=param.Number(default=2.0, doc="""
         Thalamocortical afferent strength""")
 
-    lgn2pv_str=param.Number(default=2.0, doc="""
+    lgn2pv_str=param.Number(default=1.33, doc="""
         Thalamocortical afferent strength""")
 
     # Excitatory Projections #
@@ -78,12 +60,6 @@ class ModelLESPI(EarlyVisionModel):
 
     latexc_strength=param.Number(default=-0.5, doc="""
         Lateral excitatory connection strength""")
-
-    loc_sst_strength=param.Number(default=1.0, doc="""
-        Lateral SOM excitatory projection strength""")
-
-    lat_sst_strength=param.Number(default=2.0, doc="""
-        Lateral SOM excitatory projection strength""")
 
     latpv_strength=param.Number(default=2.5, doc="""
         Lateral PV excitatory projection strength""")
@@ -96,14 +72,6 @@ class ModelLESPI(EarlyVisionModel):
     recurrent_pv_strength=param.Number(default=0.75, doc="""
         Recurrent inhibition strength in PV population""")
 
-    # Sst projections #
-
-    disinhibition_strength=param.Number(default=0.0, doc="""
-        Disinhibitory SOM-PV strength.""")
-
-    sst_inhibition_strength=param.Number(default=0.1, doc="""
-        SOM Inhibitory strength""")
-
     #================#
     # Learning rates #
     #================#
@@ -114,15 +82,6 @@ class ModelLESPI(EarlyVisionModel):
     locexc_lr=param.Number(default=3.0, doc="""
         Local excitatory connection strength""")
 
-    latexc_lr=param.Number(default=1.0, doc="""
-        Lateral excitatory connection strength""")
-
-    loc_sst_lr=param.Number(default=0, doc="""
-        Lateral SOM excitatory projection strength""")
-
-    lat_sst_lr=param.Number(default=3.0, doc="""
-        Lateral SOM excitatory projection strength""")
-
     latpv_lr=param.Number(default=0.1, doc="""
         Lateral PV excitatory projection strength""")
 
@@ -131,12 +90,6 @@ class ModelLESPI(EarlyVisionModel):
 
     recurrent_pv_lr=param.Number(default=0.25, doc="""
         Recurrent inhibition strength in PV population""")
-
-    disinhibition_lr=param.Number(default=0.0, doc="""
-        Disinhibitory SOM-PV strength.""")
-
-    sst_inhibition_lr=param.Number(default=0.0, doc="""
-        SOM Inhibitory strength""")
 
     #=====================#
     # Spatial Calibration #
@@ -169,37 +122,23 @@ class ModelLESPI(EarlyVisionModel):
 
     # Excitatory connection profiles #
 
-    local_radius = param.Number(default=0.1, bounds=(0, None), doc="""
+    local_radius = param.Number(default=0.18, bounds=(0, None), doc="""
         Radius of the local projections within the V1Exc sheet.""")
 
     local_size = param.Number(default=0.105, bounds=(0, None), doc="""
         Size of the local excitatory connections within V1.""")
-
-    lateral_radius = param.Number(default=1.25, bounds=(0, None), doc="""
-        Radius of the lateral excitatory bounds within V1Exc.""")
-
-    lateral_size = param.Number(default=2.5, bounds=(0, None), doc="""
-        Size of the lateral excitatory connections within V1Exc.""")
 
     # PV connection profiles #
 
     pv_radius = param.Number(default=0.18, bounds=(0, None), doc="""
         Radius of the lateral inhibitory bounds within V1.""")
 
-    pv_size = param.Number(default=0.115, bounds=(0, None), doc="""
+    pv_size = param.Number(default=0.236, bounds=(0, None), doc="""
         Size of the lateral inhibitory connections within V1.""")
 
     recurrent_pv_radius = param.Number(default=0.18, bounds=(0, None),
                                        doc="""
         Radius of the recurrent Pv connections.""")
-
-    # Sst connection profiles #
-
-    disinhibition_radius = param.Number(default=0.1, bounds=(0, None), doc="""
-        Size of the lateral excitatory connections within V1.""")
-
-    disinhibition_size = param.Number(default=0.1, bounds=(0, None), doc="""
-        Size of the lateral excitatory connections within V1.""")
 
     #=====================#
     # Divisive inhibition #
@@ -211,9 +150,8 @@ class ModelLESPI(EarlyVisionModel):
 
         divide(x,maximum(y,0) + division_constant).""")
 
-
     def property_setup(self, properties):
-        properties = super(ModelLESPI, self).property_setup(properties)
+        properties = super(ModelSEPI, self).property_setup(properties)
         "Specify weight initialization, response function, and learning function"
 
         projection.CFProjection.cf_shape=imagen.Disk(smoothing=0.0)
@@ -223,13 +161,10 @@ class ModelLESPI(EarlyVisionModel):
         projection.SharedWeightCFProjection.response_fn=optimized.CFPRF_DotProduct_cython()
         return properties
 
-
     def sheet_setup(self):
-        sheets = super(ModelLESPI,self).sheet_setup()
+        sheets = super(ModelSEPI,self).sheet_setup()
         sheets['V1Exc'] = [{}]
         sheets['V1PV'] = [{}]
-        if self.laterals:
-            sheets['V1Sst'] = [{}]
 
         return sheets
 
@@ -244,7 +179,6 @@ class ModelLESPI(EarlyVisionModel):
             output_fns=[transferfn.misc.HomeostaticResponse(t_init=self.t_init,
                                                             learning_rate=0.01 if self.homeostasis else 0.0)])
 
-
     @Model.MultiPortSheet
     def V1PV(self, properties):
         return Model.SettlingCFSheet.params(
@@ -254,17 +188,6 @@ class ModelLESPI(EarlyVisionModel):
             measure_maps=False,
             joint_norm_fn=topo.sheet.optimized.compute_joint_norm_totals_opt,
             output_fns=[transferfn.misc.HalfRectify()])
-
-
-    @Model.MultiPortSheet
-    def V1Sst(self, properties):
-        return Model.SettlingCFSheet.params(
-            precedence=0.8,
-            nominal_density=self.cortex_density,
-            nominal_bounds=sheet.BoundingBox(radius=self.area/2.),
-            joint_norm_fn=topo.sheet.optimized.compute_joint_norm_totals_opt,
-            output_fns=[transferfn.misc.HalfRectify(),
-                        transferfn.Hysteresis(time_constant=0.2)])
 
     #========================#
     # Projection definitions #
@@ -326,24 +249,6 @@ class ModelLESPI(EarlyVisionModel):
             learning_rate=self.locexc_lr,
             nominal_bounds_template=sheet.BoundingBox(radius=self.local_radius))
 
-
-    @Model.matchconditions('V1Exc', 'lateral_excitatory')
-    def lateral_excitatory_conditions(self, properties):
-        return {'level': 'V1Exc'} if self.laterals else {'level': None}
-
-
-    @Model.CFProjection
-    def lateral_excitatory(self, src_properties, dest_properties):
-        return Model.CFProjection.params(
-            delay=0.05,
-            name='LateralExcitatory',
-            activity_group=(0.9, DivideWithConstant(c=1.0)),
-            weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.lateral_size),
-            strength=self.latexc_strength,
-            learning_rate=self.latexc_lr,
-            nominal_bounds_template=sheet.BoundingBox(radius=self.lateral_radius))
-
-
     @Model.matchconditions('V1PV', 'lateral_pv')
     def lateral_pv_conditions(self, properties):
         return {'level': 'V1Exc'}
@@ -361,7 +266,7 @@ class ModelLESPI(EarlyVisionModel):
 
 
     @Model.matchconditions('V1Exc', 'pv_inhibition')
-    def lateral_pv_conditions(self, properties):
+    def pv_inhibition_conditions(self, properties):
         return {'level': 'V1PV'}
 
 
@@ -390,7 +295,159 @@ class ModelLESPI(EarlyVisionModel):
             weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.pv_size*2.),
             strength=self.recurrent_pv_strength,
             learning_rate=self.recurrent_pv_lr,
+            activity_group=(0.8,DivideWithConstant(c=1.0)),
             nominal_bounds_template=sheet.BoundingBox(radius=self.pv_radius))
+
+
+
+    def training_pattern_setup(self, **overrides):
+        """
+        Only the size of Gaussian training patterns has been modified.
+        The 'aspect_ratio' and 'scale' parameter values are unchanged.
+        """
+        or_dim = 'or' in self.dims
+        gaussian = (self.dataset == 'Gaussian')
+        pattern_parameters = {'size':(0.2 if or_dim and gaussian
+                                      else 3 * 0.2 if gaussian else 10.0),
+                              'aspect_ratio': 4.66667 if or_dim else 1.0,
+                              'scale': self.contrast / 100.0}
+        return super(ModelSEPI, self).training_pattern_setup(
+            pattern_parameters=pattern_parameters,
+            position_bound_x=self.area/2.0+self.v1aff_radius,
+            position_bound_y=self.area/2.0+self.v1aff_radius)
+
+
+    def analysis_setup(self):
+        # TODO: This is different in gcal.ty, stevens/gcal.ty and gcal_od.ty
+        # And depends whether gain control is used or not
+        import topo.analysis.featureresponses
+        topo.analysis.featureresponses.FeatureMaps.selectivity_multiplier=1.0
+        topo.analysis.featureresponses.FeatureCurveCommand.contrasts=[10, 30, 70, 100]
+        if 'dr' in self.dims:
+            topo.analysis.featureresponses.MeasureResponseCommand.durations=[(max(self['lags'])+1)*1.0]
+        if 'sf' in self.dims:
+            from topo.analysis.command import measure_sine_pref
+            sf_relative_sizes = [self.sf_spacing**(sf_channel-1) for sf_channel in self['SF']]
+            wide_relative_sizes=[0.5*sf_relative_sizes[0]] + sf_relative_sizes + [2.0*sf_relative_sizes[-1]]
+            relative_sizes=(wide_relative_sizes if self.expand_sf_test_range else sf_relative_sizes)
+            #The default 1.7 spatial frequency value here is
+            #chosen because it results in a sine grating with bars whose
+            #width approximately matches the width of the Gaussian training
+            #patterns, and thus the typical width of an ON stripe in one of the
+            #receptive fields
+            measure_sine_pref.frequencies = [1.7*s for s in relative_sizes]
+
+
+
+@Model.definition
+class ModelLESPI(ModelSEPI):
+    """
+    Long-range excitation, Somatostatin (Sst) and Parvalbumin (Pv)
+    inhibition model (LESPI). The model reduces to the simpler,
+    Short-range excitation, Parvalbumin inhibition model (SEPI),
+    when the lateral flag is disabled. The SEPI model accurately
+    captures the anatomy of layer 4 in V1 and exhibits robust
+    and stable map development in a dual population model. The
+    long-range interactions in the full LESPI model enable numerous
+    surround modulation effects.
+    """
+
+    laterals = param.Boolean(default=True, doc="""
+        Instantiate long-range lateral connections. Expensive!""")
+
+    #======================#
+    # Projection strengths #
+    #======================#
+
+    # Excitatory Projections #
+
+    loc_sst_strength=param.Number(default=1.0, doc="""
+        Lateral SOM excitatory projection strength""")
+
+    lat_sst_strength=param.Number(default=2.0, doc="""
+        Lateral SOM excitatory projection strength""")
+
+    # Sst projections #
+
+    disinhibition_strength=param.Number(default=0.0, doc="""
+        Disinhibitory SOM-PV strength.""")
+
+    sst_inhibition_strength=param.Number(default=0.1, doc="""
+        SOM Inhibitory strength""")
+
+    #================#
+    # Learning rates #
+    #================#
+
+    latexc_lr=param.Number(default=1.0, doc="""
+        Lateral excitatory connection strength""")
+
+    loc_sst_lr=param.Number(default=0, doc="""
+        Lateral SOM excitatory projection strength""")
+
+    lat_sst_lr=param.Number(default=3.0, doc="""
+        Lateral SOM excitatory projection strength""")
+
+    disinhibition_lr=param.Number(default=0.0, doc="""
+        Disinhibitory SOM-PV strength.""")
+
+    sst_inhibition_lr=param.Number(default=0.0, doc="""
+        SOM Inhibitory strength""")
+
+    #=====================#
+    # Spatial Calibration #
+    #=====================#
+
+    # Excitatory connection profiles #
+
+    lateral_radius = param.Number(default=1.25, bounds=(0, None), doc="""
+        Radius of the lateral excitatory bounds within V1Exc.""")
+
+    lateral_size = param.Number(default=2.5, bounds=(0, None), doc="""
+        Size of the lateral excitatory connections within V1Exc.""")
+
+    # Sst connection profiles #
+
+    disinhibition_radius = param.Number(default=0.1, bounds=(0, None), doc="""
+        Size of the lateral excitatory connections within V1.""")
+
+    disinhibition_size = param.Number(default=0.1, bounds=(0, None), doc="""
+        Size of the lateral excitatory connections within V1.""")
+
+    def sheet_setup(self):
+        sheets = super(ModelLESPI,self).sheet_setup()
+        if self.laterals:
+            sheets['V1Sst'] = [{}]
+
+        return sheets
+
+    @Model.MultiPortSheet
+    def V1Sst(self, properties):
+        return Model.SettlingCFSheet.params(
+            precedence=0.8,
+            nominal_density=self.cortex_density,
+            nominal_bounds=sheet.BoundingBox(radius=self.area/2.),
+            joint_norm_fn=topo.sheet.optimized.compute_joint_norm_totals_opt,
+            output_fns=[transferfn.misc.HalfRectify(),
+                        transferfn.Hysteresis(time_constant=0.2)])
+
+
+
+    @Model.matchconditions('V1Exc', 'lateral_excitatory')
+    def lateral_excitatory_conditions(self, properties):
+        return {'level': 'V1Exc'} if self.laterals else {'level': None}
+
+
+    @Model.CFProjection
+    def lateral_excitatory(self, src_properties, dest_properties):
+        return Model.CFProjection.params(
+            delay=0.1,
+            name='LateralExcitatory',
+            activity_group=(0.9, DivideWithConstant(c=1.0)),
+            weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.lateral_size),
+            strength=self.latexc_strength,
+            learning_rate=self.latexc_lr,
+            nominal_bounds_template=sheet.BoundingBox(radius=self.lateral_radius))
 
 
     @Model.matchconditions('V1Sst', 'local_sst')
@@ -417,7 +474,7 @@ class ModelLESPI(EarlyVisionModel):
     @Model.CFProjection
     def lateral_sst(self, src_properties, dest_properties):
         return Model.CFProjection.params(
-            delay=0.05,
+            delay=0.1,
             name='LateralSst',
             weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.lateral_size),
             strength=self.lat_sst_strength,
@@ -456,41 +513,3 @@ class ModelLESPI(EarlyVisionModel):
             strength=self.disinhibition_strength,
             learning_rate=self.disinhibition_lr,
             nominal_bounds_template=sheet.BoundingBox(radius=self.local_radius))
-
-
-    def training_pattern_setup(self, **overrides):
-        """
-        Only the size of Gaussian training patterns has been modified.
-        The 'aspect_ratio' and 'scale' parameter values are unchanged.
-        """
-        or_dim = 'or' in self.dims
-        gaussian = (self.dataset == 'Gaussian')
-        pattern_parameters = {'size':(0.2 if or_dim and gaussian
-                                      else 3 * 0.2 if gaussian else 10.0),
-                              'aspect_ratio': 4.66667 if or_dim else 1.0,
-                              'scale': self.contrast / 100.0}
-        return super(ModelLESPI, self).training_pattern_setup(
-            pattern_parameters=pattern_parameters,
-            position_bound_x=self.area/2.0+self.v1aff_radius,
-            position_bound_y=self.area/2.0+self.v1aff_radius)
-
-
-    def analysis_setup(self):
-        # TODO: This is different in gcal.ty, stevens/gcal.ty and gcal_od.ty
-        # And depends whether gain control is used or not
-        import topo.analysis.featureresponses
-        topo.analysis.featureresponses.FeatureMaps.selectivity_multiplier=1.0
-        topo.analysis.featureresponses.FeatureCurveCommand.contrasts=[10, 30, 70, 100]
-        if 'dr' in self.dims:
-            topo.analysis.featureresponses.MeasureResponseCommand.durations=[(max(self['lags'])+1)*1.0]
-        if 'sf' in self.dims:
-            from topo.analysis.command import measure_sine_pref
-            sf_relative_sizes = [self.sf_spacing**(sf_channel-1) for sf_channel in self['SF']]
-            wide_relative_sizes=[0.5*sf_relative_sizes[0]] + sf_relative_sizes + [2.0*sf_relative_sizes[-1]]
-            relative_sizes=(wide_relative_sizes if self.expand_sf_test_range else sf_relative_sizes)
-            #The default 1.7 spatial frequency value here is
-            #chosen because it results in a sine grating with bars whose
-            #width approximately matches the width of the Gaussian training
-            #patterns, and thus the typical width of an ON stripe in one of the
-            #receptive fields
-            measure_sine_pref.frequencies = [1.7*s for s in relative_sizes]
