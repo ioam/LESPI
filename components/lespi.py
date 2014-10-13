@@ -5,8 +5,10 @@ import imagen
 import topo
 from topo.base.arrayutil import DivideWithConstant
 from topo import learningfn, projection, responsefn, sheet, transferfn
-from topo import optimized
-
+import topo.learningfn.optimized
+import topo.transferfn.optimized
+import topo.responsefn.optimized
+import topo.sheet.optimized
 from topo.submodel.earlyvision import EarlyVisionModel
 from topo.submodel import Model
 
@@ -151,10 +153,10 @@ class ModelSEPI(EarlyVisionModel):
         "Specify weight initialization, response function, and learning function"
 
         projection.CFProjection.cf_shape=imagen.Disk(smoothing=0.0)
-        projection.CFProjection.response_fn=optimized.CFPRF_DotProduct_cython()
-        projection.CFProjection.learning_fn=optimized.CFPLF_Hebbian_cython()
-        projection.CFProjection.weights_output_fns=[optimized.CFPOF_DivisiveNormalize_L1_cython()]
-        projection.SharedWeightCFProjection.response_fn=optimized.CFPRF_DotProduct_cython()
+        projection.CFProjection.response_fn=responsefn.optimized.CFPRF_DotProduct_opt()
+        projection.CFProjection.learning_fn=learningfn.optimized.CFPLF_Hebbian_opt()
+        projection.CFProjection.weights_output_fns=[transferfn.optimized.CFPOF_DivisiveNormalizeL1_opt()]
+        projection.SharedWeightCFProjection.response_fn=responsefn.optimized.CFPRF_DotProduct_opt()
         return properties
 
     def sheet_setup(self):
