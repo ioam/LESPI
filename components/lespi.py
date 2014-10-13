@@ -60,9 +60,6 @@ class ModelSEPI(EarlyVisionModel):
     locexc_strength=param.Number(default=3.0, doc="""
         Local excitatory connection strength""")
 
-    latexc_strength=param.Number(default=-0.5, doc="""
-        Lateral excitatory connection strength""")
-
     latpv_strength=param.Number(default=2.5, doc="""
         Lateral PV excitatory projection strength""")
 
@@ -357,6 +354,9 @@ class ModelLESPI(ModelSEPI):
     #======================#
 
     # Excitatory Projections #
+
+    latexc_strength=param.Number(default=-0.5, doc="""
+        Lateral excitatory connection strength""")
 
     loc_sst_strength=param.Number(default=1.0, doc="""
         Lateral SOM excitatory projection strength""")
