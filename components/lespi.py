@@ -122,10 +122,10 @@ class ModelSEPI(EarlyVisionModel):
 
     # Excitatory connection profiles #
 
-    local_radius = param.Number(default=0.18, bounds=(0, None), doc="""
+    local_radius = param.Number(default=0.14, bounds=(0, None), doc="""
         Radius of the local projections within the V1Exc sheet.""")
 
-    local_size = param.Number(default=0.105, bounds=(0, None), doc="""
+    local_size = param.Number(default=0.067, bounds=(0, None), doc="""
         Size of the local excitatory connections within V1.""")
 
     # PV connection profiles #
@@ -133,12 +133,8 @@ class ModelSEPI(EarlyVisionModel):
     pv_radius = param.Number(default=0.18, bounds=(0, None), doc="""
         Radius of the lateral inhibitory bounds within V1.""")
 
-    pv_size = param.Number(default=0.236, bounds=(0, None), doc="""
+    pv_size = param.Number(default=0.1, bounds=(0, None), doc="""
         Size of the lateral inhibitory connections within V1.""")
-
-    recurrent_pv_radius = param.Number(default=0.18, bounds=(0, None),
-                                       doc="""
-        Radius of the recurrent Pv connections.""")
 
     #=====================#
     # Divisive inhibition #
@@ -292,12 +288,11 @@ class ModelSEPI(EarlyVisionModel):
         return Model.CFProjection.params(
             delay=0.05,
             name='RecurrentPV',
-            weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.pv_size*2.),
+            weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.pv_size),
             strength=self.recurrent_pv_strength,
             learning_rate=self.recurrent_pv_lr,
             activity_group=(0.8,DivideWithConstant(c=1.0)),
             nominal_bounds_template=sheet.BoundingBox(radius=self.pv_radius))
-
 
 
     def training_pattern_setup(self, **overrides):
