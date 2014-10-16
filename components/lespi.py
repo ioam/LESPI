@@ -81,7 +81,7 @@ class ModelSEPI(EarlyVisionModel):
     locexc_lr=param.Number(default=3.0, doc="""
         Local excitatory connection strength""")
 
-    latpv_lr=param.Number(default=0.1, doc="""
+    latpv_lr=param.Number(default=0.25, doc="""
         Lateral PV excitatory projection strength""")
 
     pv_lr=param.Number(default=0.25, doc="""
@@ -132,7 +132,7 @@ class ModelSEPI(EarlyVisionModel):
     pv_radius = param.Number(default=0.18, bounds=(0, None), doc="""
         Radius of the lateral inhibitory bounds within V1.""")
 
-    pv_size = param.Number(default=0.1, bounds=(0, None), doc="""
+    pv_size = param.Number(default=0.236, bounds=(0, None), doc="""
         Size of the lateral inhibitory connections within V1.""")
 
     #=====================#
@@ -221,7 +221,7 @@ class ModelSEPI(EarlyVisionModel):
                 delay=LGN_V1_delay+lag,
                 dest_port=('Activity','JointNormalize','Afferent'),
                 name= name if lag==0 else name+('Lag'+str(lag)),
-                learning_rate=self.aff_lr,
+                learning_rate=self.aff_lr if excitatory else self.aff_lr/6.,
                 strength=strength,
                 weights_generator=weights_generator,
                 nominal_bounds_template=sheet.BoundingBox(radius=
