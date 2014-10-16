@@ -78,7 +78,7 @@ class ModelSEPI(EarlyVisionModel):
     aff_lr=param.Number(default=0.2,bounds=(0.0,None),doc="""
         Learning rate for the afferent projection(s) to V1.""")
 
-    locexc_lr=param.Number(default=3.0, doc="""
+    locexc_lr=param.Number(default=0.0, doc="""
         Local excitatory connection strength""")
 
     latpv_lr=param.Number(default=0.25, doc="""
