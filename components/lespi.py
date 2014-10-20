@@ -38,6 +38,9 @@ class ModelSEPI(EarlyVisionModel):
         in the L and GCL models and adaptive in the AL and
         SCAL models.""")
 
+    target_activity = param.Number(default=0.024, doc="""
+        The homeostatic target activity.""")
+
     num_inputs = param.Integer(default=1, bounds=(1,None))
 
     #======================#
@@ -171,7 +174,7 @@ class ModelSEPI(EarlyVisionModel):
             nominal_density=self.cortex_density,
             nominal_bounds=sheet.BoundingBox(radius=self.area/2.),
             joint_norm_fn=topo.sheet.optimized.compute_joint_norm_totals_opt,
-            output_fns=[transferfn.misc.HomeostaticResponse(t_init=self.t_init,
+            output_fns=[transferfn.misc.HomeostaticResponse(t_init=self.t_init, target_activity=self.target_activity,
                                                             learning_rate=0.01 if self.homeostasis else 0.0)])
 
     @Model.MultiPortSheet
