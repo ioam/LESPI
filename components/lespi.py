@@ -127,7 +127,7 @@ class ModelSEPI(EarlyVisionModel):
     local_radius = param.Number(default=0.14, bounds=(0, None), doc="""
         Radius of the local projections within the V1Exc sheet.""")
 
-    local_size = param.Number(default=0.067, bounds=(0, None), doc="""
+    local_size = param.Number(default=0.06, bounds=(0, None), doc="""
         Size of the local excitatory connections within V1.""")
 
     # PV connection profiles #
