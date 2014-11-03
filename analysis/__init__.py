@@ -5,14 +5,12 @@ from scipy.optimize import curve_fit
 import param
 from param import ParameterizedFunction, ParamOverrides
 
-from dataviews.options import options, PlotOpts
-from dataviews import SheetStack, SheetView, Table, TableStack
-from dataviews.ipython.widgets import ProgressBar
-from dataviews.collector import AttrTree
-from dataviews.interface.pandas import DFrameStack
-from dataviews.interface.seaborn import DFrame
-from dataviews.operation import StackOperation
-from dataviews.sheetviews import DataGrid
+from holoviews import SheetMatrix, Table, Grid, ViewMap
+from holoviews.core.options import options, PlotOpts
+from holoviews.ipython.widgets import ProgressBar
+from holoviews.interface.collector import AttrTree
+from holoviews.interface.seaborn import DFrame
+from holoviews.operation import MapOperation
 
 from imagen import Composite, RawRectangle
 
@@ -26,7 +24,7 @@ import featuremapper.features as f
 import topo
 
 
-class SheetReductionCurve(StackOperation):
+class SheetReductionCurve(MapOperation):
     """
     Takes in a Stack of SheetViews, reduces them using the provided
     reduce_fn and collates them across the provided dimension.
@@ -142,7 +140,7 @@ class measure_size_tuning(UnitMeasurements):
 
         # Stack the Size Tuning Data
         size_df = pandas.concat(size_dataframes)
-        size_stack = DFrameStack(None, dimensions=['Time', 'Contrast'])
+        size_stack = ViewMap(None, dimensions=['Time', 'Contrast'])
         for k, cdf in size_df.groupby(['Contrast']):
             cdf = cdf.filter(['Peak_Size', 'SI', 'Suppression_Size', 'CS_Size', 'CSI'])
             size_stack[(topo.sim.time(), k)] = DFrame(cdf, label='Size Tuning Analysis')
@@ -151,7 +149,7 @@ class measure_size_tuning(UnitMeasurements):
         if css_dataframes:
             css_df = pandas.concat(css_dataframes)
             css_df = css_df.filter(['CSS', 'Low', 'High'])
-            contrast_stack = DFrameStack((topo.sim.time(), DFrame(css_df, label='Contrast Size Tuning Shift')),
+            contrast_stack = ViewMap((topo.sim.time(), DFrame(css_df, label='Contrast Size Tuning Shift')),
                                      dimensions=['Time'])
             results.set_path(('ContrastShift', p.output), contrast_stack)
 
@@ -220,7 +218,7 @@ class measure_frequency_tuning(UnitMeasurements):
 
         # Stack the Frequency Tuning Data
         freq_df = pandas.concat(size_dataframes)
-        size_stack = DFrameStack(None, dimensions=['Time', 'Contrast'])
+        size_stack = ViewMap(None, dimensions=['Time', 'Contrast'])
         for k, cdf in freq_df.groupby(['Contrast']):
             cdf = cdf.filter(['Peak', 'Bandwidth', 'QFactor', 'Lower', 'Upper'])
             size_stack[(topo.sim.time(), k)] = DFrame(cdf, label='Frequency Tuning Analysis')
@@ -302,7 +300,7 @@ class measure_iso_suppression(UnitMeasurements):
 
         # Stack the Size Tuning Data
         orcs_df = pandas.concat(orcs_dataframes)
-        orcs_stack = DFrameStack(None, dimensions=['Time', 'ContrastSurround'])
+        orcs_stack = ViewMap(None, dimensions=['Time', 'ContrastSurround'])
         for k, cdf in orcs_df.groupby(['ContrastSurround']):
             cdf = cdf.filter(['OCSI'])
             orcs_stack[(topo.sim.time(), k)] = DFrame(cdf, label='Orientation Contrast Analysis')
@@ -358,7 +356,7 @@ class measure_phase_tuning(FeatureCurveCommand):
         roi_width = ro-lo
         roiratio = roi_width/width
 
-        if isinstance(orpref, SheetStack):
+        if isinstance(orpref, ViewMap):
             orpref = orpref.last
 
         # Process dimension values and reduced dimensions
@@ -425,7 +423,7 @@ class RFGaborFit(param.ParameterizedFunction):
     init_fit = param.NumericTuple(default=(1.0, 1.7, 0.1, 0.2, 0, 0))
 
     def _validate_rf(self, rf):
-        if not isinstance(rf, SheetView):
+        if not isinstance(rf, SheetMatrix):
             raise Exception('Supplied views need to be curves.')
 
     def _function(self, (x, y), A=1.0, f=1.7, sig_x=0.1, sig_y=0.2, phase=0, theta=0):
@@ -445,7 +443,7 @@ class RFGaborFit(param.ParameterizedFunction):
 
         fit_grid = grid.clone()
         residual_grid = grid.clone()
-        fitvals_grid = DataGrid(grid.bounds, None, xdensity=grid.xdensity, ydensity=grid.ydensity)
+        fitvals_grid = Grid(None)
         for idx, ((x, y), sheet_stack) in enumerate(grid.items()):
             for key, view in sheet_stack.items():
                 processed = self._process(view, dict(grid.key_items((x, y)), **sheet_stack.key_items(key)))
@@ -453,7 +451,7 @@ class RFGaborFit(param.ParameterizedFunction):
                 if (x, y) not in fit_grid:
                     fit_grid[(x, y)] = sheet_stack.clone({key: processed[0]})
                     residual_grid[(x, y)] = sheet_stack.clone({key: processed[1]})
-                    fitvals_grid[(x, y)] = TableStack({key: processed[2]}, dimensions=sheet_stack.dimensions)
+                    fitvals_grid[(x, y)] = ViewMap({key: processed[2]}, dimensions=sheet_stack.dimensions)
                 else:
                     fit_grid[(x, y)][key] = processed[0]
                     residual_grid[(x, y)][key] = processed[1]
@@ -512,20 +510,20 @@ class ComplexityAnalysis(ParameterizedFunction):
         return self._process(p, grid)
 
     def _process(self, p, grid):
-        l, b, r, t = grid.bounds.lbrt()
+        l, b, r, t = grid.lbrt()
         width, height = r - l, t - b
         cols, rows = round(width * grid.xdensity), round(height * grid.ydensity)
 
         results = AttrTree()
 
-        sheet_stack = SheetStack(None, dimensions=grid.values()[0].dimensions)
+        sheet_stack = ViewMap(None, dimensions=grid.values()[0].dimensions)
         for idx, ((x, y), curve_stack) in enumerate(grid.items()):
             for key in curve_stack.keys():
                 if key not in sheet_stack:
                     complexity = np.zeros((int(rows), int(cols)))
-                    sheet_stack[key] = SheetView(complexity, grid.bounds,
-                                                 label='Complexity Analysis',
-                                                 value='Modulation Ratio')
+                    sheet_stack[key] = SheetMatrix(complexity, grid.bounds,
+                                                   label='Complexity Analysis',
+                                                   value='Modulation Ratio')
                 row, col = grid.sheet2matrixidx(x, y)
                 ydata = curve_stack[key].data[:, 1]
                 fft = np.fft.fft(list(ydata) * p.fft_sampling)
@@ -596,8 +594,8 @@ class TargetFlanker(Composite):
         orientation = p.orientation - np.pi/2.
 
         return Composite(generators=[bar_1, bar_2], bounds=p.bounds, operator=np.add,
-                                orientation=orientation, xdensity=p.xdensity,
-                                ydensity=p.ydensity)()
+                         orientation=orientation, xdensity=p.xdensity,
+                         ydensity=p.ydensity)()
 
 
 OrientationOffset = f.Feature('OrientationOffset', range=(-np.pi/2., np.pi/2.))
