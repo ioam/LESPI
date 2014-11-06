@@ -135,7 +135,7 @@ class ModelSEPI(EarlyVisionModel):
     pv_radius = param.Number(default=0.18, bounds=(0, None), doc="""
         Radius of the lateral inhibitory bounds within V1.""")
 
-    pv_size = param.Number(default=0.236, bounds=(0, None), doc="""
+    pv_size = param.Number(default=0.115, bounds=(0, None), doc="""
         Size of the lateral inhibitory connections within V1.""")
 
     #=====================#
