@@ -5,8 +5,8 @@ IPython Tools taken from Jean-Luc Stevens TCAL repository.
 import os, sys, time, difflib
 
 from IPython.core import page
-from dataviews import NdMapping
-from dataviews.collector import AttrTree
+from holoviews import NdMapping
+from holoviews.interface.collector import AttrTree
 
 from io import BytesIO
 from contextlib import contextmanager
