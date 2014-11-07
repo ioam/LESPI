@@ -5,7 +5,7 @@ from scipy.optimize import curve_fit
 import param
 from param import ParameterizedFunction, ParamOverrides
 
-from holoviews import SheetMatrix, Table, Grid, ViewMap
+from holoviews import Matrix, Table, Grid, ViewMap
 from holoviews.core.options import options, PlotOpts
 from holoviews.ipython.widgets import ProgressBar
 from holoviews.interface.collector import AttrTree
@@ -106,13 +106,13 @@ class measure_size_tuning(UnitMeasurements):
             # Compute relative offsets from the measured coordinate
             lbrt = (coord[0]+lo, coord[1]+bo, coord[0]+ro, coord[1]+to)
 
-            size_grid = data.SizeTuning[p.output].grid_sample(cols, rows, lbrt=lbrt, collate='Size')
+            size_grid = data.SizeTuning[p.output].sample((cols, rows), bounds=lbrt).collate('Size')
             size_data = SizeTuningPeaks(size_grid)
             size_df = size_data.dframe()
 
             # Filter out values with significantly different OR preferences
             ref_orpref = orpref.last[coord]
-            ortables = orpref.grid_sample(rows, cols, lbrt=lbrt)
+            ortables = orpref.sample((rows, cols), bounds=lbrt)
             or_df = ortables[topo.sim.time(), :].dframe()
             or_df.rename(columns={'X': 'Grid_X', 'Y': 'Grid_Y'}, inplace=True)
             size_df = pandas.merge(size_df, or_df, on=['Grid_X', 'Grid_Y', 'Time', 'Duration'])
@@ -122,7 +122,7 @@ class measure_size_tuning(UnitMeasurements):
 
             # If multiple contrasts have been measured find the contrast dependent size tuning shift
             if len(p.contrasts) >= 2:
-                contrast_grid = size_grid.map(lambda x, k: x.overlay_dimensions(['Contrast']))
+                contrast_grid = size_grid.map(lambda x, k: x.overlay(['Contrast']))
                 css_grid = SizeTuningShift(contrast_grid)
                 css_df = css_grid.dframe()
                 css_df = pandas.merge(css_df, or_df, on=['Grid_X', 'Grid_Y', 'Time', 'Duration'])
@@ -194,13 +194,13 @@ class measure_frequency_tuning(UnitMeasurements):
             # Compute relative offsets from the measured coordinate
             lbrt = (coord[0]+lo, coord[1]+bo, coord[0]+ro, coord[1]+to)
 
-            freq_grid = data.FrequencyTuning[p.output].grid_sample(cols, rows, lbrt=lbrt, collate='Frequency')
+            freq_grid = data.FrequencyTuning[p.output].sample((cols, rows), bounds=lbrt).collate('Frequency')
             freq_data = FrequencyTuningAnalysis(freq_grid)
             freq_df = freq_data.dframe()
 
             # Filter out values with significantly different OR preferences
             ref_orpref = orpref.last[coord]
-            ortables = orpref.grid_sample(rows, cols, lbrt=lbrt)
+            ortables = orpref.sample((rows, cols), bounds=lbrt)
             or_df = ortables[topo.sim.time(), :].dframe()
             or_df.rename(columns={'X': 'Grid_X', 'Y': 'Grid_Y'}, inplace=True)
             freq_df = pandas.merge(freq_df, or_df, on=['Grid_X', 'Grid_Y', 'Time', 'Duration'])
@@ -276,13 +276,13 @@ class measure_iso_suppression(UnitMeasurements):
             # Compute relative offsets from the measured coordinate
             lbrt = (coord[0]+lo, coord[1]+bo, coord[0]+ro, coord[1]+to)
 
-            orcs = data.OrientationsurroundTuning[p.output].grid_sample(cols, rows, lbrt=lbrt, collate='OrientationSurround')
+            orcs = data.OrientationsurroundTuning[p.output].sample((cols, rows), bounds=lbrt).collate('OrientationSurround')
             orcs_data = OrientationContrastAnalysis(orcs)
             orcs_df = orcs_data.dframe()
 
             # Filter out values with significantly different OR preferences
             ref_orpref = orpref.last[coord]
-            ortables = orpref.grid_sample(rows, cols, lbrt=lbrt)
+            ortables = orpref.sample((rows, cols), bounds=lbrt)
             or_df = ortables[topo.sim.time(), :].dframe()
             or_df.rename(columns={'X': 'Grid_X', 'Y': 'Grid_Y'}, inplace=True)
             orcs_df = pandas.merge(orcs_df, or_df, on=['Grid_X', 'Grid_Y', 'Time', 'Duration'])
@@ -394,8 +394,7 @@ class measure_phase_tuning(FeatureCurveCommand):
                 reduced_stack[tuple(key)] = phase_stack.last.clone(reduced_response)
             phase_progress((float(idx+1)/p.num_phase)*100)
 
-        grid = reduced_stack.grid_sample(roiratio*rows+2, roiratio*cols+2,
-                                         lbrt=p.roi, collate='Phase')
+        grid = reduced_stack.sample((roiratio*rows+2, roiratio*cols+2), bounds=p.roi).collate('Phase')
 
         del results.PhaseTuning[output]
         results.set_path(('PhaseTuning', output), grid)
@@ -423,7 +422,7 @@ class RFGaborFit(param.ParameterizedFunction):
     init_fit = param.NumericTuple(default=(1.0, 1.7, 0.1, 0.2, 0, 0))
 
     def _validate_rf(self, rf):
-        if not isinstance(rf, SheetMatrix):
+        if not isinstance(rf, Matrix):
             raise Exception('Supplied views need to be curves.')
 
     def _function(self, (x, y), A=1.0, f=1.7, sig_x=0.1, sig_y=0.2, phase=0, theta=0):
@@ -521,9 +520,9 @@ class ComplexityAnalysis(ParameterizedFunction):
             for key in curve_stack.keys():
                 if key not in sheet_stack:
                     complexity = np.zeros((int(rows), int(cols)))
-                    sheet_stack[key] = SheetMatrix(complexity, grid.bounds,
-                                                   label='Complexity Analysis',
-                                                   value='Modulation Ratio')
+                    sheet_stack[key] = Matrix(complexity, grid.bounds,
+                                              label='Complexity Analysis',
+                                              value='Modulation Ratio')
                 row, col = grid.sheet2matrixidx(x, y)
                 ydata = curve_stack[key].data[:, 1]
                 fft = np.fft.fft(list(ydata) * p.fft_sampling)
