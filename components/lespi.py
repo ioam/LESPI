@@ -406,14 +406,6 @@ class ModelLESPI(ModelSEPI):
     lateral_size = param.Number(default=2.5, bounds=(0, None), doc="""
         Size of the lateral excitatory connections within V1Exc.""")
 
-    # Sst connection profiles #
-
-    disinhibition_radius = param.Number(default=0.1, bounds=(0, None), doc="""
-        Size of the lateral excitatory connections within V1.""")
-
-    disinhibition_size = param.Number(default=0.1, bounds=(0, None), doc="""
-        Size of the lateral excitatory connections within V1.""")
-
     def sheet_setup(self):
         sheets = super(ModelLESPI,self).sheet_setup()
         if self.laterals:
