@@ -38,7 +38,7 @@ class ModelSEPI(EarlyVisionModel):
         in the L and GCL models and adaptive in the AL and
         SCAL models.""")
 
-    target_activity = param.Number(default=0.024, doc="""
+    target_activity = param.Number(default=0.012, doc="""
         The homeostatic target activity.""")
 
     num_inputs = param.Integer(default=1, bounds=(1,None))
@@ -68,10 +68,10 @@ class ModelSEPI(EarlyVisionModel):
 
     # PV projections #
 
-    pv_strength=param.Number(default=4.0, doc="""
+    pv_strength=param.Number(default=5.5, doc="""
         PV Divisive GC strength """)
 
-    recurrent_pv_strength=param.Number(default=0.75, doc="""
+    recurrent_pv_strength=param.Number(default=1.25, doc="""
         Recurrent inhibition strength in PV population""")
 
     #================#
@@ -127,7 +127,7 @@ class ModelSEPI(EarlyVisionModel):
     local_radius = param.Number(default=0.14, bounds=(0, None), doc="""
         Radius of the local projections within the V1Exc sheet.""")
 
-    local_size = param.Number(default=0.06, bounds=(0, None), doc="""
+    local_size = param.Number(default=0.05, bounds=(0, None), doc="""
         Size of the local excitatory connections within V1.""")
 
     # PV connection profiles #
