@@ -358,7 +358,7 @@ class ModelLESPI(ModelSEPI):
 
     # Excitatory Projections #
 
-    latexc_strength=param.Number(default=-0.5, doc="""
+    latexc_strength=param.Number(default=-1.0, doc="""
         Lateral excitatory connection strength""")
 
     loc_sst_strength=param.Number(default=1.0, doc="""
@@ -388,10 +388,10 @@ class ModelLESPI(ModelSEPI):
     lat_sst_lr=param.Number(default=3.0, doc="""
         Lateral SOM excitatory projection strength""")
 
-    disinhibition_lr=param.Number(default=0.0, doc="""
+    disinhibition_lr=param.Number(default=0.1, doc="""
         Disinhibitory SOM-PV strength.""")
 
-    sst_inhibition_lr=param.Number(default=0.0, doc="""
+    sst_inhibition_lr=param.Number(default=0.1, doc="""
         SOM Inhibitory strength""")
 
     #=====================#
@@ -428,9 +428,8 @@ class ModelLESPI(ModelSEPI):
             nominal_density=self.cortex_density,
             nominal_bounds=sheet.BoundingBox(radius=self.area/2.),
             joint_norm_fn=topo.sheet.optimized.compute_joint_norm_totals_opt,
-            output_fns=[transferfn.misc.HalfRectify(),
+            output_fns=[transferfn.HalfRectifyAndPower(e=1.5),
                         transferfn.Hysteresis(time_constant=0.2)])
-
 
 
     @Model.matchconditions('V1Exc', 'lateral_excitatory')
@@ -479,7 +478,6 @@ class ModelLESPI(ModelSEPI):
             weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.lateral_size),
             strength=self.lat_sst_strength,
             learning_rate=self.lat_sst_lr,
-            activity_group=[(0.9, DivideWithConstant(c=1.0))],
             nominal_bounds_template=sheet.BoundingBox(radius=self.lateral_radius))
 
 
@@ -496,7 +494,8 @@ class ModelLESPI(ModelSEPI):
             weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.local_size),
             strength=self.sst_inhibition_strength,
             learning_rate=self.sst_inhibition_lr,
-            nominal_bounds_template=sheet.BoundingBox(radius=self.sst_inhibition_radius))
+            activity_group=[(0.9, DivideWithConstant(c=1.0))],
+            nominal_bounds_template=sheet.BoundingBox(radius=self.local_radius))
 
 
     @Model.matchconditions('V1PV', 'sst_pv_inhibition')
@@ -509,7 +508,7 @@ class ModelLESPI(ModelSEPI):
         return Model.CFProjection.params(
             delay=0.05,
             name='Disinhibition',
-            weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.disinhibition_size),
+            weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.local_size),
             strength=self.disinhibition_strength,
             learning_rate=self.disinhibition_lr,
             nominal_bounds_template=sheet.BoundingBox(radius=self.local_radius))
