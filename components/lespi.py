@@ -60,18 +60,18 @@ class ModelSEPI(EarlyVisionModel):
 
     # Excitatory Projections #
 
-    locexc_strength=param.Number(default=3.0, doc="""
+    locexc_strength=param.Number(default=2.5, doc="""
         Local excitatory connection strength""")
 
-    latpv_strength=param.Number(default=2.5, doc="""
+    latpv_strength=param.Number(default=2.0, doc="""
         Lateral PV excitatory projection strength""")
 
     # PV projections #
 
-    pv_strength=param.Number(default=5.5, doc="""
+    pv_strength=param.Number(default=5.0, doc="""
         PV Divisive GC strength """)
 
-    recurrent_pv_strength=param.Number(default=1.25, doc="""
+    recurrent_pv_strength=param.Number(default=1.0, doc="""
         Recurrent inhibition strength in PV population""")
 
     #================#
