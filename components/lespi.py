@@ -41,6 +41,12 @@ class ModelSEPI(EarlyVisionModel):
     target_activity = param.Number(default=0.012, doc="""
         The homeostatic target activity.""")
 
+    pv_exponent = param.Number(default=1.0, doc="""
+        Exponent of PV neuron output function.""")
+
+    pv_timeconstant = param.Number(default=0.0, doc="""
+        Hysteresis time constant for PV neurons.""")
+
     num_inputs = param.Integer(default=1, bounds=(1,None))
 
     #======================#
@@ -185,7 +191,8 @@ class ModelSEPI(EarlyVisionModel):
             nominal_bounds=sheet.BoundingBox(radius=self.area/2.),
             measure_maps=False,
             joint_norm_fn=topo.sheet.optimized.compute_joint_norm_totals_opt,
-            output_fns=[transferfn.misc.HalfRectify()])
+            output_fns=[transferfn.HalfRectifyAndPower(e=self.pv_exponent),
+                        transferfn.Hysteresis(time_constant=self.pv_timeconstant)])
 
     #========================#
     # Projection definitions #
@@ -352,6 +359,9 @@ class ModelLESPI(ModelSEPI):
     laterals = param.Boolean(default=True, doc="""
         Instantiate long-range lateral connections. Expensive!""")
 
+    sst_timeconstant = param.Number(default=0.2, doc="""
+        Hysteresis time constant for Sst neurons.""")
+
     #======================#
     # Projection strengths #
     #======================#
@@ -421,7 +431,7 @@ class ModelLESPI(ModelSEPI):
             nominal_bounds=sheet.BoundingBox(radius=self.area/2.),
             joint_norm_fn=topo.sheet.optimized.compute_joint_norm_totals_opt,
             output_fns=[transferfn.HalfRectifyAndPower(e=1.5),
-                        transferfn.Hysteresis(time_constant=0.2)])
+                        transferfn.Hysteresis(time_constant=self.sst_timeconstant)])
 
 
     @Model.matchconditions('V1Exc', 'lateral_excitatory')
