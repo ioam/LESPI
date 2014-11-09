@@ -116,7 +116,7 @@ class measure_size_tuning(UnitMeasurements):
             or_df = ortables[topo.sim.time(), :].dframe()
             or_df.rename(columns={'X': 'Grid_X', 'Y': 'Grid_Y'}, inplace=True)
             size_df = pandas.merge(size_df, or_df, on=['Grid_X', 'Grid_Y', 'Time', 'Duration'])
-            filter_condition = (np.abs(size_df['Orientation_Preference'] - ref_orpref) % np.pi) < p.max_ordiff
+            filter_condition = (np.abs(size_df[orpref.last.value.name] - ref_orpref) % np.pi) < p.max_ordiff
             size_df = size_df[filter_condition]
             size_dataframes.append(size_df)
 
@@ -126,7 +126,7 @@ class measure_size_tuning(UnitMeasurements):
                 css_grid = SizeTuningShift(contrast_grid)
                 css_df = css_grid.dframe()
                 css_df = pandas.merge(css_df, or_df, on=['Grid_X', 'Grid_Y', 'Time', 'Duration'])
-                filter_condition = (np.abs(css_df['Orientation_Preference'] - ref_orpref) % np.pi) < p.max_ordiff
+                filter_condition = (np.abs(css_df[orpref.last.value.name] - ref_orpref) % np.pi) < p.max_ordiff
                 css_df = css_df[filter_condition]
                 css_dataframes.append(css_df)
 
@@ -204,7 +204,7 @@ class measure_frequency_tuning(UnitMeasurements):
             or_df = ortables[topo.sim.time(), :].dframe()
             or_df.rename(columns={'X': 'Grid_X', 'Y': 'Grid_Y'}, inplace=True)
             freq_df = pandas.merge(freq_df, or_df, on=['Grid_X', 'Grid_Y', 'Time', 'Duration'])
-            filter_condition = (np.abs(freq_df['Orientation_Preference'] - ref_orpref) % np.pi) < p.max_ordiff
+            filter_condition = (np.abs(freq_df[orpref.last.value.name] - ref_orpref) % np.pi) < p.max_ordiff
             freq_df = freq_df[filter_condition]
             size_dataframes.append(freq_df)
 
@@ -286,7 +286,7 @@ class measure_iso_suppression(UnitMeasurements):
             or_df = ortables[topo.sim.time(), :].dframe()
             or_df.rename(columns={'X': 'Grid_X', 'Y': 'Grid_Y'}, inplace=True)
             orcs_df = pandas.merge(orcs_df, or_df, on=['Grid_X', 'Grid_Y', 'Time', 'Duration'])
-            filter_condition = (np.abs(orcs_df['Orientation_Preference'] - ref_orpref) % np.pi) < p.max_ordiff
+            filter_condition = (np.abs(orcs_df[orpref.last.value.name] - ref_orpref) % np.pi) < p.max_ordiff
             orcs_df = orcs_df[filter_condition]
             orcs_dataframes.append(orcs_df)
 
