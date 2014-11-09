@@ -12,13 +12,13 @@ from holoviews.interface.collector import AttrTree
 from holoviews.interface.seaborn import DFrame
 from holoviews.operation import MapOperation
 
-from imagen import Composite, RawRectangle
+from imagen import Composite, RawRectangle, Gaussian
 
 from featuremapper.analysis.spatialtuning import SizeTuningPeaks, SizeTuningShift,\
     OrientationContrastAnalysis, FrequencyTuningAnalysis
 from featuremapper.command import FeatureCurveCommand, DistributionStatisticFn, \
     measure_size_response, measure_orientation_contrast, DSF_MaxValue, \
-    UnitCurveCommand, MeasureResponseCommand, measure_frequency_response
+    UnitCurveCommand, MeasureResponseCommand, measure_frequency_response, measure_response
 import featuremapper.features as f
 
 import topo
@@ -534,6 +534,67 @@ class ComplexityAnalysis(ParameterizedFunction):
         results.set_path(('Complexity', 'V1'), sheet_stack)
         return results
 
+
+
+class response_latency(ViewOperation):
+
+    def _process(self, view, key=None):
+        xvals = view.data[:, 0]
+        yvals = view.data[:, 1]
+
+        peak_duration = xvals[yvals.argmax()]
+
+        return [ItemTable({'Peak Latency': peak_duration},
+                          dimensions=[Dimension('Peak_Latency')],
+                          label=view.label)]
+
+
+
+class measure_response_latencies(UnitMeasurements):
+
+    coords = param.List(default=[(0, 0)])
+
+    durations = param.List(default=[0.05*i for i in range(21)])
+
+    pattern = param.Parameter(default=imagen.Gaussian)
+
+    outputs = param.List(default=['V1Exc', 'V1PV', 'V1Sst'])
+
+    relative_to = param.String(default=['V1Exc'])
+
+    relative_roi = param.NumericTuple(default=(-0.05, -0.05, 0.05, 0.05))
+
+    def _compute_roi(self, p, output):
+        # Compute densities, positions and ROI region
+        xd, yd = topo.sim[output].xdensity, topo.sim[output].ydensity
+        coords = [topo.sim[output].closest_cell_center(*coord) for coord in p.coords]
+        lo, bo, ro, to = p.relative_roi
+        cols, rows = (ro - lo) * xd, (to - bo) * yd
+        return coords, (lo, bo, ro, to), cols, rows
+
+    def __call__(self, **params):
+        p = param.ParamOverrides(self, params)
+
+        coords, lbrt_offsets, cols, rows = self._compute_roi(p, p.outputs[0])
+        lo, bo, ro, to = lbrt_offsets
+
+        pattern_name = ''.join([p.pattern.__name__, 'Response'])
+
+        results = AttrTree()
+        output_results = [ViewMap(dimensions=['Grid_X', 'Grid_Y']) for output in p.outputs]
+        for coord in coords:
+            pattern = p.pattern(x=coord[0], y=coord[1])
+            lbrt = (coord[0]+lo, coord[1]+bo, coord[0]+ro, coord[1]+to)
+
+            data = measure_response(pattern_generator=pattern, durations=p.durations, outputs=p.outputs)
+            for oidx, output in enumerate(p.outputs):
+                response_grid = data[pattern_name][output].sample((cols, rows), bounds=lbrt).collate('Duration')
+                latency_table = response_latency(response_grid)
+                output_results[oidx][coord] = DFrame(latency_table.dframe())
+        for output, result in zip(p.outputs, output_results):
+            results.set_path((pattern_name, output), DFrame(result.dframe()))
+
+        return results
 
 
 class TargetFlanker(Composite):
