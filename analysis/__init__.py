@@ -593,7 +593,7 @@ class measure_response_latencies(UnitMeasurements):
                 latency_table = response_latency(response_grid)
                 output_results[oidx][coord] = DFrame(latency_table.dframe())
         for output, result in zip(p.outputs, output_results):
-            results.set_path((pattern_name, output), DFrame(result.dframe()))
+            results.set_path((''.join([pattern_name, 'Latencies']), output), DFrame(result.dframe()))
 
         return results
 
