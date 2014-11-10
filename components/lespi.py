@@ -44,7 +44,7 @@ class ModelSEPI(EarlyVisionModel):
     pv_exponent = param.Number(default=1.0, doc="""
         Exponent of PV neuron output function.""")
 
-    pv_timeconstant = param.Number(default=0.0, doc="""
+    pv_timeconstant = param.Number(default=1.0, doc="""
         Hysteresis time constant for PV neurons.""")
 
     num_inputs = param.Integer(default=1, bounds=(1,None))
