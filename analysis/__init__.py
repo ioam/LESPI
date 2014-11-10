@@ -586,14 +586,16 @@ class measure_response_latencies(UnitMeasurements):
         for coord in coords:
             pattern = p.pattern(x=coord[0], y=coord[1])
             lbrt = (coord[0]+lo, coord[1]+bo, coord[0]+ro, coord[1]+to)
-
             data = measure_response(pattern_generator=pattern, durations=p.durations, outputs=p.outputs)
             for oidx, output in enumerate(p.outputs):
                 response_grid = data[pattern_name][output].sample((cols, rows), bounds=lbrt).collate('Duration')
                 latency_table = response_latency(response_grid)
                 output_results[oidx][coord] = DFrame(latency_table.dframe())
+
         for output, result in zip(p.outputs, output_results):
-            results.set_path((''.join([pattern_name, 'Latencies']), output), DFrame(result.dframe()))
+            data = {(topo.sim.time(),): DFrame(result.dframe())}
+            vmap = ViewMap(data, dimensions=[f.Time])
+            results.set_path((''.join([pattern_name, 'Latencies']), output), vmap)
 
         return results
 
