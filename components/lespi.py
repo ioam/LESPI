@@ -496,7 +496,7 @@ class ModelLESPI(ModelSEPI):
             weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.local_size),
             strength=self.sst_inhibition_strength,
             learning_rate=self.sst_inhibition_lr,
-            activity_group=[(0.9, DivideWithConstant(c=1.0))],
+            activity_group=(0.9, DivideWithConstant(c=1.0)),
             nominal_bounds_template=sheet.BoundingBox(radius=self.local_radius))
 
 
