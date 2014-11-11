@@ -58,10 +58,10 @@ def filter_unitorpref(df, orpref_stack, max_diff=np.pi/8):
 
 class UnitMeasurements(MeasureResponseCommand):
 
-    def _compute_roi(self, p):
+    def _compute_roi(self, p, output):
         # Compute densities, positions and ROI region
-        xd, yd = topo.sim[p.output].xdensity, topo.sim[p.output].ydensity
-        coords = [topo.sim[p.output].closest_cell_center(*coord) for coord in p.coords]
+        xd, yd = topo.sim[output].xdensity, topo.sim[output].ydensity
+        coords = [topo.sim[output].closest_cell_center(*coord) for coord in p.coords]
         lo, bo, ro, to = p.relative_roi
         cols, rows = (ro - lo) * xd, (to - bo) * yd
         return coords, (lo, bo, ro, to), cols, rows
@@ -83,76 +83,76 @@ class measure_size_tuning(UnitMeasurements):
 
     num_phase = param.Integer(default=8)
 
-    output = param.String(default='V1')
+    outputs = param.List(default=['V1'])
 
     relative_roi = param.NumericTuple(default=(-0.25, -0.25, 0.25, 0.25))
 
     def __call__(self, orpref, **params):
         p = param.ParamOverrides(self, params)
 
-        coords, lbrt_offsets, cols, rows = self._compute_roi(p)
+        coords, lbrt_offsets, cols, rows = self._compute_roi(p, p.outputs[0])
         lo, bo, ro, to = lbrt_offsets
 
-        size_dataframes = []
-        css_dataframes = []
-
+        size_dataframes = defaultdict(list)
+        css_dataframes = defaultdict(list)
 
         measurement_params = dict(frequencies=[p.frequency], max_size=p.max_size,
                                   num_sizes=p.num_sizes, num_phase=p.num_phase,
-                                  outputs=[p.output], contrasts=p.contrasts)
+                                  outputs=p.outputs, contrasts=p.contrasts)
         results = AttrTree()
         for coord in coords:
             data = measure_size_response(coords=[coord], **measurement_params)
-
             # Compute relative offsets from the measured coordinate
             lbrt = (coord[0]+lo, coord[1]+bo, coord[0]+ro, coord[1]+to)
 
-            size_grid = data.SizeTuning[p.output].sample((cols, rows), bounds=lbrt).collate('Size')
-            size_data = SizeTuningPeaks(size_grid)
-            size_df = size_data.dframe()
+            for output in p.outputs:
+                size_grid = data.SizeTuning[output].sample((cols, rows), bounds=lbrt).collate('Size')
+                size_data = SizeTuningPeaks(size_grid)
+                size_df = size_data.dframe()
 
-            # Filter out values with significantly different OR preferences
-            ref_orpref = orpref.last[coord]
-            ortables = orpref.sample((rows, cols), bounds=lbrt)
-            or_df = ortables[topo.sim.time(), :].dframe()
-            or_df.rename(columns={'X': 'Grid_X', 'Y': 'Grid_Y'}, inplace=True)
-            size_df = pandas.merge(size_df, or_df, on=['Grid_X', 'Grid_Y', 'Time', 'Duration'])
-            filter_condition = (np.abs(size_df[orpref.last.value.name] - ref_orpref) % np.pi) < p.max_ordiff
-            size_df = size_df[filter_condition]
-            size_dataframes.append(size_df)
+                # Filter out values with significantly different OR preferences
+                ref_orpref = orpref.last[coord]
+                ortables = orpref.sample((rows, cols), bounds=lbrt)
+                or_df = ortables[topo.sim.time(), :].dframe()
+                or_df.rename(columns={'X': 'Grid_X', 'Y': 'Grid_Y'}, inplace=True)
+                size_df = pandas.merge(size_df, or_df, on=['Grid_X', 'Grid_Y', 'Time', 'Duration'])
+                filter_condition = (np.abs(size_df[orpref.last.value.name] - ref_orpref) % np.pi) < p.max_ordiff
+                size_df = size_df[filter_condition]
+                size_dataframes[output].append(size_df)
 
-            # If multiple contrasts have been measured find the contrast dependent size tuning shift
-            if len(p.contrasts) >= 2:
-                contrast_grid = size_grid.map(lambda x, k: x.overlay(['Contrast']))
-                css_grid = SizeTuningShift(contrast_grid)
-                css_df = css_grid.dframe()
-                css_df = pandas.merge(css_df, or_df, on=['Grid_X', 'Grid_Y', 'Time', 'Duration'])
-                filter_condition = (np.abs(css_df[orpref.last.value.name] - ref_orpref) % np.pi) < p.max_ordiff
-                css_df = css_df[filter_condition]
-                css_dataframes.append(css_df)
+                # If multiple contrasts have been measured find the contrast dependent size tuning shift
+                if len(p.contrasts) >= 2:
+                    contrast_grid = size_grid.map(lambda x, k: x.overlay(['Contrast']))
+                    css_grid = SizeTuningShift(contrast_grid)
+                    css_df = css_grid.dframe()
+                    css_df = pandas.merge(css_df, or_df, on=['Grid_X', 'Grid_Y', 'Time', 'Duration'])
+                    filter_condition = (np.abs(css_df[orpref.last.value.name] - ref_orpref) % np.pi) < p.max_ordiff
+                    css_df = css_df[filter_condition]
+                    css_dataframes[output].append(css_df)
 
-            # Add Size Response to results
-            path = ('SizeResponse', p.output)
-            size_response = data.SizeTuning[p.output]
-            if path in results:
-                results.SizeResponse[p.output].update(size_response)
-            else:
-                results.set_path(path, size_response)
+                # Add Size Response to results
+                path = ('SizeResponse', output)
+                size_response = data.SizeTuning[output]
+                if path in results:
+                    results.SizeResponse[output].update(size_response)
+                else:
+                    results.set_path(path, size_response)
 
-        # Stack the Size Tuning Data
-        size_df = pandas.concat(size_dataframes)
-        size_stack = ViewMap(None, dimensions=['Time', 'Contrast'])
-        for k, cdf in size_df.groupby(['Contrast']):
-            cdf = cdf.filter(['Peak_Size', 'SI', 'Suppression_Size', 'CS_Size', 'CSI'])
-            size_stack[(topo.sim.time(), k)] = DFrame(cdf, label='Size Tuning Analysis')
-        results.set_path(('SizeTuning', p.output), size_stack)
+            # Stack the Size Tuning Data
+            for output in p.outputs:
+                size_df = pandas.concat(size_dataframes[output])
+                size_stack = ViewMap(None, dimensions=['Time', 'Contrast'])
+                for k, cdf in size_df.groupby(['Contrast']):
+                    cdf = cdf.filter(['Peak_Size', 'SI', 'Suppression_Size', 'CS_Size', 'CSI'])
+                    size_stack[(topo.sim.time(), k)] = DFrame(cdf, label='Size Tuning Analysis')
+                    results.set_path(('SizeTuning', output), size_stack)
 
-        if css_dataframes:
-            css_df = pandas.concat(css_dataframes)
-            css_df = css_df.filter(['CSS', 'Low', 'High'])
-            contrast_stack = ViewMap((topo.sim.time(), DFrame(css_df, label='Contrast Size Tuning Shift')),
-                                     dimensions=['Time'])
-            results.set_path(('ContrastShift', p.output), contrast_stack)
+                if css_dataframes:
+                    css_df = pandas.concat(css_dataframes[output])
+                    css_df = css_df.filter(['CSS', 'Low', 'High'])
+                    contrast_stack = ViewMap((topo.sim.time(), DFrame(css_df, label='Contrast Size Tuning Shift')),
+                                             dimensions=['Time'])
+                    results.set_path(('ContrastShift', output), contrast_stack)
 
         return results
 
@@ -180,7 +180,7 @@ class measure_frequency_tuning(UnitMeasurements):
     def __call__(self, orpref, **params):
         p = param.ParamOverrides(self, params)
 
-        coords, lbrt_offsets, cols, rows = self._compute_roi(p)
+        coords, lbrt_offsets, cols, rows = self._compute_roi(p, p.output)
         lo, bo, ro, to = lbrt_offsets
 
         size_dataframes = []
@@ -260,7 +260,7 @@ class measure_iso_suppression(UnitMeasurements):
     def __call__(self, orpref, **params):
         p = param.ParamOverrides(self, params)
 
-        coords, lbrt_offsets, cols, rows = self._compute_roi(p)
+        coords, lbrt_offsets, cols, rows = self._compute_roi(p, p.output)
         lo, bo, ro, to = lbrt_offsets
 
         orcs_dataframes = []
@@ -564,14 +564,6 @@ class measure_response_latencies(UnitMeasurements):
     relative_to = param.String(default=['V1Exc'])
 
     relative_roi = param.NumericTuple(default=(-0.05, -0.05, 0.05, 0.05))
-
-    def _compute_roi(self, p, output):
-        # Compute densities, positions and ROI region
-        xd, yd = topo.sim[output].xdensity, topo.sim[output].ydensity
-        coords = [topo.sim[output].closest_cell_center(*coord) for coord in p.coords]
-        lo, bo, ro, to = p.relative_roi
-        cols, rows = (ro - lo) * xd, (to - bo) * yd
-        return coords, (lo, bo, ro, to), cols, rows
 
     def __call__(self, **params):
         p = param.ParamOverrides(self, params)
