@@ -3,7 +3,6 @@ import param
 import imagen
 
 import topo
-from topo.base.arrayutil import DivideWithConstant
 from topo import learningfn, projection, responsefn, sheet, transferfn
 import topo.learningfn.optimized
 import topo.transferfn.optimized
@@ -12,7 +11,7 @@ import topo.sheet.optimized
 from topo.submodel.earlyvision import EarlyVisionModel
 from topo.submodel import Model
 
-from components import MultiPortSheet
+from components import MultiPortSheet, DivideWithConstant
 
 @Model.definition
 class ModelSEPI(EarlyVisionModel):

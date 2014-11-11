@@ -169,6 +169,18 @@ class GaussianAdditiveCloud(Composite):
 
 from topo.transferfn.misc import TransferFnWithState
 
+class DivideWithConstant(param.Parameterized):
+    """
+    Divide two scalars or arrays with a constant (c) offset on the
+    denominator to allow setting the gain or to avoid divide-by-zero
+    issues. The result is clipped to ensure that it has only positive
+    values.
+    """
+    c = param.Number(default=1.0)
+
+    def __call__(self, x, y):
+        return np.divide(x,np.maximum(y+self.c,0))
+
 
 class SynapticScaling(TransferFnWithState):
     """
