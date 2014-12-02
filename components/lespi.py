@@ -153,6 +153,27 @@ class ModelSEPI(EarlyVisionModel):
 
         divide(x,maximum(y,0) + division_constant).""")
 
+    #=========================#
+    # Long-range connectivity #
+    #=========================#
+
+    laterals = param.Boolean(default=False, doc="""
+        Instantiate long-range lateral connections. Expensive!""")
+
+    latexc_strength=param.Number(default=-1.0, doc="""
+        Lateral excitatory connection strength""")
+
+    latexc_lr=param.Number(default=1.0, doc="""
+        Lateral excitatory connection strength""")
+
+    # Excitatory connection profiles #
+
+    lateral_radius = param.Number(default=1.25, bounds=(0, None), doc="""
+        Radius of the lateral excitatory bounds within V1Exc.""")
+
+    lateral_size = param.Number(default=2.5, bounds=(0, None), doc="""
+        Size of the lateral excitatory connections within V1Exc.""")
+
     def property_setup(self, properties):
         properties = super(ModelSEPI, self).property_setup(properties)
         "Specify weight initialization, response function, and learning function"
@@ -303,6 +324,23 @@ class ModelSEPI(EarlyVisionModel):
             nominal_bounds_template=sheet.BoundingBox(radius=self.pv_radius))
 
 
+    @Model.matchconditions('V1Exc', 'lateral_excitatory')
+    def lateral_excitatory_conditions(self, properties):
+        return {'level': 'V1Exc'} if self.laterals else {'level': None}
+
+
+    @Model.CFProjection
+    def lateral_excitatory(self, src_properties, dest_properties):
+        return Model.CFProjection.params(
+            delay=0.1,
+            name='LateralExcitatory',
+            activity_group=(0.8, DivideWithConstant(c=1.0)),
+            weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.lateral_size),
+            strength=self.latexc_strength,
+            learning_rate=self.latexc_lr,
+            nominal_bounds_template=sheet.BoundingBox(radius=self.lateral_radius))
+
+
     def training_pattern_setup(self, **overrides):
         """
         Only the size of Gaussian training patterns has been modified.
@@ -367,9 +405,6 @@ class ModelLESPI(ModelSEPI):
 
     # Excitatory Projections #
 
-    latexc_strength=param.Number(default=-1.0, doc="""
-        Lateral excitatory connection strength""")
-
     loc_sst_strength=param.Number(default=1.0, doc="""
         Lateral SOM excitatory projection strength""")
 
@@ -388,9 +423,6 @@ class ModelLESPI(ModelSEPI):
     # Learning rates #
     #================#
 
-    latexc_lr=param.Number(default=1.0, doc="""
-        Lateral excitatory connection strength""")
-
     loc_sst_lr=param.Number(default=0, doc="""
         Lateral SOM excitatory projection strength""")
 
@@ -402,18 +434,6 @@ class ModelLESPI(ModelSEPI):
 
     sst_inhibition_lr=param.Number(default=0.1, doc="""
         SOM Inhibitory strength""")
-
-    #=====================#
-    # Spatial Calibration #
-    #=====================#
-
-    # Excitatory connection profiles #
-
-    lateral_radius = param.Number(default=1.25, bounds=(0, None), doc="""
-        Radius of the lateral excitatory bounds within V1Exc.""")
-
-    lateral_size = param.Number(default=2.5, bounds=(0, None), doc="""
-        Size of the lateral excitatory connections within V1Exc.""")
 
     def sheet_setup(self):
         sheets = super(ModelLESPI,self).sheet_setup()
@@ -431,23 +451,6 @@ class ModelLESPI(ModelSEPI):
             joint_norm_fn=topo.sheet.optimized.compute_joint_norm_totals_opt,
             output_fns=[transferfn.HalfRectifyAndPower(e=1.5),
                         transferfn.Hysteresis(time_constant=self.sst_timeconstant)])
-
-
-    @Model.matchconditions('V1Exc', 'lateral_excitatory')
-    def lateral_excitatory_conditions(self, properties):
-        return {'level': 'V1Exc'} if self.laterals else {'level': None}
-
-
-    @Model.CFProjection
-    def lateral_excitatory(self, src_properties, dest_properties):
-        return Model.CFProjection.params(
-            delay=0.1,
-            name='LateralExcitatory',
-            activity_group=(0.9, DivideWithConstant(c=1.0)),
-            weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.lateral_size),
-            strength=self.latexc_strength,
-            learning_rate=self.latexc_lr,
-            nominal_bounds_template=sheet.BoundingBox(radius=self.lateral_radius))
 
 
     @Model.matchconditions('V1Sst', 'local_sst')
@@ -495,7 +498,7 @@ class ModelLESPI(ModelSEPI):
             weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.local_size),
             strength=self.sst_inhibition_strength,
             learning_rate=self.sst_inhibition_lr,
-            activity_group=(0.9, DivideWithConstant(c=1.0)),
+            activity_group=(0.8, DivideWithConstant(c=1.0)),
             nominal_bounds_template=sheet.BoundingBox(radius=self.local_radius))
 
 
