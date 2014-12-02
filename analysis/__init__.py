@@ -543,7 +543,10 @@ class response_latency(ViewOperation):
         xvals = view.data[:, 0]
         yvals = view.data[:, 1]
 
-        peak_duration = xvals[yvals.argmax()]
+        if np.sum(yvals) == 0:
+            peak_duration = np.NaN
+        else:
+            peak_duration = xvals[yvals.argmax()]
 
         return [ItemTable({'Peak Latency': peak_duration},
                           dimensions=[Dimension('Peak_Latency')],
@@ -582,7 +585,7 @@ class measure_response_latencies(UnitMeasurements):
             for oidx, output in enumerate(p.outputs):
                 response_grid = data[pattern_name][output].sample((cols, rows), bounds=lbrt).collate('Duration')
                 latency_table = response_latency(response_grid)
-                output_results[oidx][coord] = DFrame(latency_table.dframe())
+                output_results[oidx][coord] = DFrame(latency_table.dframe().dropna())
 
         for output, result in zip(p.outputs, output_results):
             data = {(topo.sim.time(),): DFrame(result.dframe())}
