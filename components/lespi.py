@@ -1,3 +1,5 @@
+import numpy as np
+
 import param
 
 import imagen
@@ -10,8 +12,6 @@ import topo.responsefn.optimized
 import topo.sheet.optimized
 from topo.submodel.earlyvision import EarlyVisionModel
 from topo.submodel import Model
-
-from components import MultiPortSheet, DivideWithConstant
 
 @Model.definition
 class ModelSEPI(EarlyVisionModel):
@@ -160,7 +160,7 @@ class ModelSEPI(EarlyVisionModel):
     laterals = param.Boolean(default=False, doc="""
         Instantiate long-range lateral connections. Expensive!""")
 
-    latexc_strength=param.Number(default=-1.0, doc="""
+    latexc_strength=param.Number(default=1.0, doc="""
         Lateral excitatory connection strength""")
 
     latexc_lr=param.Number(default=1.0, doc="""
@@ -334,7 +334,7 @@ class ModelSEPI(EarlyVisionModel):
         return Model.CFProjection.params(
             delay=0.1,
             name='LateralExcitatory',
-            activity_group=(0.8, DivideWithConstant(c=1.0)),
+            activity_group=(0.9, np.multiply),
             weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.lateral_size),
             strength=self.latexc_strength,
             learning_rate=self.latexc_lr,
@@ -416,7 +416,7 @@ class ModelLESPI(ModelSEPI):
     disinhibition_strength=param.Number(default=0.0, doc="""
         Disinhibitory SOM-PV strength.""")
 
-    sst_inhibition_strength=param.Number(default=0.1, doc="""
+    sst_inhibition_strength=param.Number(default=-0.1, doc="""
         SOM Inhibitory strength""")
 
     #================#
@@ -498,7 +498,7 @@ class ModelLESPI(ModelSEPI):
             weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.local_size),
             strength=self.sst_inhibition_strength,
             learning_rate=self.sst_inhibition_lr,
-            activity_group=(0.8, DivideWithConstant(c=1.0)),
+            activity_group=(0.9, np.multiply),
             nominal_bounds_template=sheet.BoundingBox(radius=self.local_radius))
 
 
