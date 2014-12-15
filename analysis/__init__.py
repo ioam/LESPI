@@ -5,10 +5,9 @@ from scipy.optimize import curve_fit
 import param
 from param import ParameterizedFunction, ParamOverrides
 
-from holoviews import ViewMap, Dimension, Matrix, Table, Grid, ItemTable
+from holoviews import ViewMap, Dimension, Matrix, Table, Grid, ItemTable, AttrTree
 from holoviews.core.options import options, PlotOpts
 from holoviews.ipython.widgets import ProgressBar
-from holoviews.interface.collector import AttrTree
 from holoviews.interface.seaborn import DFrame
 from holoviews.operation import MapOperation, ViewOperation
 
