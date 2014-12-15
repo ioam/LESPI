@@ -5,6 +5,7 @@ import param
 import imagen
 
 import topo
+from topo.base.arrayutil import DivideWithConstant
 from topo import learningfn, projection, responsefn, sheet, transferfn
 import topo.learningfn.optimized
 import topo.transferfn.optimized
