@@ -14,6 +14,8 @@ import topo.sheet.optimized
 from topo.submodel.earlyvision import EarlyVisionModel
 from topo.submodel import Model
 
+from . import MultiplyWithConstant
+
 @Model.definition
 class ModelSEPI(EarlyVisionModel):
 
@@ -335,7 +337,7 @@ class ModelSEPI(EarlyVisionModel):
         return Model.CFProjection.params(
             delay=0.1,
             name='LateralExcitatory',
-            activity_group=(0.9, np.multiply),
+            activity_group=(0.9, MultiplyWithConstant()),
             weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.lateral_size),
             strength=self.latexc_strength,
             learning_rate=self.latexc_lr,
@@ -499,7 +501,7 @@ class ModelLESPI(ModelSEPI):
             weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.local_size),
             strength=self.sst_inhibition_strength,
             learning_rate=self.sst_inhibition_lr,
-            activity_group=(0.9, np.multiply),
+            activity_group=(0.9, MultiplyWithConstant()),
             nominal_bounds_template=sheet.BoundingBox(radius=self.local_radius))
 
 

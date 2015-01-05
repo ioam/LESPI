@@ -182,6 +182,18 @@ class DivideWithConstant(param.Parameterized):
         return np.divide(x,np.maximum(y+self.c,0))
 
 
+class MultiplyWithConstant(param.Parameterized):
+    """
+    Allows multiplying with a constant offset parameter.
+    """
+
+    c = param.Number(default=1.0)
+
+    def __call__(self, x, y):
+        return np.multiply(x, np.maximum(y+self.c, 0))
+
+
+
 class SynapticScaling(TransferFnWithState):
     """
     SynapticScaling is a homeostatic mechanism to scale
