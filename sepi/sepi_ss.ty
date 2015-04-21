@@ -187,7 +187,7 @@ topo.sim.connect('Retina','LGNOff',delay=0.04,
 ## LGN TO V1 AFFERENTS
 
 
-# LGN -> V1 Exc Layer
+# LGN -> V1 Exc Element
 
 topo.sim.connect('LGNOn','V1Exc',delay=0.04,
                  dest_port=('Activity','JointNormalize', 'Afferent'),
@@ -203,7 +203,7 @@ topo.sim.connect('LGNOff','V1Exc',delay=0.04,
                  weights_generator=pattern.random.GaussianCloud(gaussian_size=1.0),
                  nominal_bounds_template=sheet.BoundingBox(radius=0.5),learning_rate=p.v1_aff_lr)
 
-# LGN -> V1 PV+ Layer
+# LGN -> V1 PV+ Element
 
 topo.sim.connect('LGNOn','V1PV',delay=0.04,
                  dest_port=('Activity','JointNormalize', 'Afferent'),
@@ -230,7 +230,7 @@ topo.sim.connect('V1Exc','V1Exc',delay=0.04,
                  nominal_bounds_template=sheet.BoundingBox(radius=0.1),
                  learning_rate=0)
 
-# V1 PV+ Layer to V1 Exc
+# V1 PV+ Element to V1 Exc
 
 if p.synaptic_scaling:
     v1exc2pv_inputfns = [SynapticScaling(learning_rate=p.ss_lr,
@@ -257,7 +257,7 @@ topo.sim.connect('V1PV','V1PV',delay=0.04,
                  activity_group=(0.8,DivideWithConstant(c=1.0)),
                  nominal_bounds_template = sheet.BoundingBox(radius=0.16),learning_rate=0.25)
 
-# VSD Response Layer
+# VSD Response Element
 
 topo.sim['VSDLayer'] = topo.sheet.CFSheet(nominal_density=topo.sim['V1Exc'].nominal_density,
                                           nominal_bounds= topo.sim['V1Exc'].nominal_bounds)
