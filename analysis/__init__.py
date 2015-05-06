@@ -280,7 +280,7 @@ class measure_iso_suppression(UnitMeasurements):
             # Compute relative offsets from the measured coordinate
             lbrt = (coord[0]+lo, coord[1]+bo, coord[0]+ro, coord[1]+to)
 
-            orcs = data.OrientationsurroundTuning[p.output].sample((cols, rows), bounds=lbrt).collate('OrientationSurround')
+            orcs = data.OrientationsurroundTuning[p.output].sample((cols, rows), bounds=lbrt).to.curve('OrientationSurround', 'Response')
             orcs_data = OrientationContrastAnalysis(orcs)
             orcs_df = orcs_data.dframe()
 
@@ -288,8 +288,8 @@ class measure_iso_suppression(UnitMeasurements):
             ref_orpref = orpref.last[coord]
             ortables = orpref.sample((rows, cols), bounds=lbrt)
             or_df = ortables[topo.sim.time(), :].dframe()
-            orcs_df = pandas.merge(orcs_df, or_df, on=['X', 'Y', 'Time', 'Duration'])
-            filter_condition = (np.abs(orcs_df[orpref.last.value.name] - ref_orpref) % np.pi) < p.max_ordiff
+            orcs_df = pandas.merge(orcs_df, or_df, on=['x', 'y', 'Time', 'Duration'])
+            filter_condition = (np.abs(orcs_df[orpref.last.value_dimensions[0].name] - ref_orpref) % np.pi) < p.max_ordiff
             orcs_df = orcs_df[filter_condition]
             orcs_dataframes.append(orcs_df)
 
