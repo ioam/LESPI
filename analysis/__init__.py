@@ -38,7 +38,7 @@ class SheetReductionCurve(MapOperation):
     reduce_fn = param.Callable(default=np.mean)
 
     def _process(self, view):
-        return [view.reduce(X=self.p.reduce_fn, Y=self.p.reduce_fn).collate(self.p.dimension)]
+        return [view.reduce(x=self.p.reduce_fn, y=self.p.reduce_fn).collate(self.p.dimension, 'Response')]
 
 
 # Filter out units with OR prefs significantly different from the measured location
