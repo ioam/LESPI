@@ -15,7 +15,7 @@ from holoviews.interface.seaborn import DFrame
 from holoviews.operation import MapOperation, ElementOperation
 
 import imagen
-from imagen import Composite, RawRectangle, Gaussian
+from imagen import Composite, RawRectangle
 
 from featuremapper.analysis.spatialtuning import SizeTuningPeaks, SizeTuningShift,\
     OrientationContrastAnalysis, FrequencyTuningAnalysis
@@ -109,7 +109,7 @@ class measure_size_tuning(UnitMeasurements):
             lbrt = (coord[0]+lo, coord[1]+bo, coord[0]+ro, coord[1]+to)
 
             for output in p.outputs:
-                size_grid = data.SizeTuning[output].sample((cols, rows), bounds=lbrt).collate('Size')
+                size_grid = data.SizeTuning[output].sample((cols, rows), bounds=lbrt).to.curve('Size', 'Response')
                 size_data = SizeTuningPeaks(size_grid)
                 size_df = size_data.dframe()
 
@@ -117,17 +117,18 @@ class measure_size_tuning(UnitMeasurements):
                 ref_orpref = orpref.last[coord]
                 ortables = orpref.sample((rows, cols), bounds=lbrt)
                 or_df = ortables[topo.sim.time(), :].dframe()
-                size_df = pandas.merge(size_df, or_df, on=['X', 'Y', 'Time', 'Duration'])
+                print or_df.columns, size_df.columns
+                size_df = pandas.merge(size_df, or_df, on=['x', 'y', 'Time', 'Duration'])
                 filter_condition = (np.abs(size_df[ordim] - ref_orpref) % np.pi) < p.max_ordiff
                 size_df = size_df[filter_condition]
                 size_dataframes[output].append(size_df)
 
                 # If multiple contrasts have been measured find the contrast dependent size tuning shift
                 if len(p.contrasts) >= 2:
-                    contrast_grid = size_grid.map(lambda x, k: x.overlay(['Contrast']))
+                    contrast_grid = size_grid.overlay(['Contrast']).grid(['x', 'y'])
                     css_grid = SizeTuningShift(contrast_grid)
                     css_df = css_grid.dframe()
-                    css_df = pandas.merge(css_df, or_df, on=['X', 'Y', 'Time', 'Duration'])
+                    css_df = pandas.merge(css_df, or_df, on=['x', 'y', 'Time', 'Duration'])
                     filter_condition = (np.abs(css_df[ordim] - ref_orpref) % np.pi) < p.max_ordiff
                     css_df = css_df[filter_condition]
                     css_dataframes[output].append(css_df)
@@ -198,7 +199,7 @@ class measure_frequency_tuning(UnitMeasurements):
             # Compute relative offsets from the measured coordinate
             lbrt = (coord[0]+lo, coord[1]+bo, coord[0]+ro, coord[1]+to)
 
-            freq_grid = data.FrequencyTuning[p.output].sample((cols, rows), bounds=lbrt).collate('Frequency')
+            freq_grid = data.FrequencyTuning[p.output].sample((cols, rows), bounds=lbrt).to.curve('Frequency', 'Response')
             freq_data = FrequencyTuningAnalysis(freq_grid)
             freq_df = freq_data.dframe()
 
@@ -206,7 +207,7 @@ class measure_frequency_tuning(UnitMeasurements):
             ref_orpref = orpref.last[coord]
             ortables = orpref.sample((rows, cols), bounds=lbrt)
             or_df = ortables[topo.sim.time(), :].dframe()
-            freq_df = pandas.merge(freq_df, or_df, on=['X', 'Y', 'Time', 'Duration'])
+            freq_df = pandas.merge(freq_df, or_df, on=['x', 'y', 'Time', 'Duration'])
             filter_condition = (np.abs(freq_df[ordim] - ref_orpref) % np.pi) < p.max_ordiff
             freq_df = freq_df[filter_condition]
             size_dataframes.append(freq_df)
