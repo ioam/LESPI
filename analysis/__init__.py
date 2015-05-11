@@ -9,6 +9,7 @@ from param import ParameterizedFunction, ParamOverrides
 
 from holoviews import HoloMap, Dimension, Image, Table, GridSpace, ItemTable
 from holoviews.core.options import Store, Options
+from holoviews.core.ndmapping import sorted_context
 from holoviews.ipython.widgets import ProgressBar
 from holoviews.interface.collector import Layout
 from holoviews.interface.seaborn import DFrame
@@ -334,8 +335,6 @@ class measure_phase_tuning(FeatureCurveCommand):
         Function that will be used to analyze the distributions of unit
         responses.""")
 
-    roi = param.NumericTuple(default=(-0.48, -0.48, 0.48, 0.48))
-
     x_axis = param.String(default='phase')
 
     def __call__(self, orpref=None, **params):
@@ -352,12 +351,6 @@ class measure_phase_tuning(FeatureCurveCommand):
 
         # Compute bounds and ROIs
         rows, cols = stack.last.data.shape
-        l, b, r, t = stack.last.bounds.lbrt()
-        width = r - l
-
-        lo, bo, ro, to = p.roi
-        roi_width = ro-lo
-        roiratio = roi_width/width
 
         if isinstance(orpref, HoloMap):
             orpref = orpref.last
@@ -373,15 +366,15 @@ class measure_phase_tuning(FeatureCurveCommand):
 
         # Reduce the original stack by finding the response to the
         # optimally orientated stimulus for each unit for each phase
-        reduced_stack = stack.clone(None, key_dimensions=reduced_dimensions)
+        reduced_stack = stack.clone(shared_data=False, key_dimensions=reduced_dimensions)
         for idx, phase in enumerate(phasevalues):
             reduced_response = np.zeros((rows, cols))
             phase_stack = stack.select(Phase=phase)
-            keys = [tuple(v for d, v in zip(stack.dimensions('key', label), k) if d != 'Orientation')
+            keys = [tuple(v for d, v in zip(stack.dimensions('key', label=True), k) if d != 'Orientation')
                     for k in phase_stack.keys()]
             for key in set(keys):
                 key_slice = list(key)
-                key_slice.insert(stack.dimension_index('Orientation'), slice(None))
+                key_slice.insert(stack.get_dimension_index('Orientation'), slice(None))
                 sliced_stack = stack[tuple(key_slice)]
                 for x in xrange(cols):
                     for y in xrange(rows):
@@ -397,10 +390,7 @@ class measure_phase_tuning(FeatureCurveCommand):
                 reduced_stack[tuple(key)] = phase_stack.last.clone(reduced_response)
             phase_progress((float(idx+1)/p.num_phase)*100)
 
-        grid = reduced_stack.sample((roiratio*rows+2, roiratio*cols+2), bounds=p.roi).collate('Phase')
-
-        del results.PhaseTuning[output]
-        results.set_path(('PhaseTuning', output), grid)
+        results[('PhaseTuning', output)] = reduced_stack
         return results
 
 
@@ -506,35 +496,42 @@ class ComplexityAnalysis(ParameterizedFunction):
     fft_sampling = param.Integer(default=8, doc="""
        Number of samples of the Phase tuning curves to take the FFT over.""")
 
+    roi = param.NumericTuple(default=None, length=4, doc="""
+       Region for which to compute the complexity.""")
+
     def __call__(self, grid, **params):
         p = ParamOverrides(self, params)
 
         return self._process(p, grid)
 
-    def _process(self, p, grid):
-        l, b, r, t = grid.lbrt()
-        width, height = r - l, t - b
-        cols, rows = round(width * grid.xdensity), round(height * grid.ydensity)
+    def _process(self, p, phase_tuning):
+        phase_image = phase_tuning.last
+        cols, rows = phase_image.data.shape
+        bounds = phase_image.bounds
+        label = phase_image.label
+        roi = p.roi if p.roi is not None else bounds.lbrt()
+        with sorted_context(False):
+            grid = DFrame(phase_tuning.sample((cols, rows), bounds=roi).dframe()).curve('Phase', 'Response').grid(['x', 'y'])
 
         results = Layout()
-
         sheet_stack = HoloMap(None, key_dimensions=grid.values()[0].key_dimensions)
         for idx, ((x, y), curve_stack) in enumerate(grid.items()):
-            for key in curve_stack.keys():
+            for key, curve in curve_stack.data.items():
                 if key not in sheet_stack:
                     complexity = np.zeros((int(rows), int(cols)))
-                    sheet_stack[key] = Image(complexity, grid.bounds,
-                                             label='Complexity Analysis',
-                                             group='Modulation Ratio')
-                row, col = grid.sheet2matrixidx(x, y)
-                ydata = curve_stack[key].data[:, 1]
+                    sheet_stack[key] = Image(complexity, bounds, label=label,
+                                             group='Modulation Ratio',
+                                             value_dimensions=[Dimension('Modulation Ratio',
+                                                                         range=(0, 2))])
+                row, col = phase_image.sheet2matrixidx(x, y)
+                ydata = curve.data[:, 1]
                 fft = np.fft.fft(list(ydata) * p.fft_sampling)
                 dc_value = abs(fft[0])
                 if dc_value != 0:
                     modulation_ratio = 2 * abs(fft[p.fft_sampling]) / dc_value
-                    sheet_stack[key].data[row, col] = modulation_ratio
+                    sheet_stack.data[key].data[row, col] = modulation_ratio
 
-        results.set_path(('Complexity', 'V1'), sheet_stack)
+        results.set_path((label,), sheet_stack)
         return results
 
 
@@ -583,7 +580,7 @@ class measure_response_latencies(UnitMeasurements):
             lbrt = (coord[0]+lo, coord[1]+bo, coord[0]+ro, coord[1]+to)
             data = measure_response(pattern_generator=pattern, durations=p.durations, outputs=p.outputs)
             for oidx, output in enumerate(p.outputs):
-                response_grid = data[pattern_name][output].sample((cols, rows), bounds=lbrt).collate('Duration')
+                response_grid = data[pattern_name][output].sample((cols, rows), bounds=lbrt).to.curve('Duration', 'Response').grid(['x', 'y'])
                 latency_table = response_latency(response_grid)
                 output_results[oidx][coord] = DFrame(latency_table.dframe().dropna())
 
