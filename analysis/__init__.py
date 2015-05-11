@@ -484,7 +484,7 @@ class RFGaborFit(param.ParameterizedFunction):
 
 class ComplexityAnalysis(ParameterizedFunction):
     """
-    The complexity analysis takes a GridSpace of Phase tuning curves as input
+    The complexity analysis takes HoloMap of Phase tuning curves as input
     and derives the modulation ratio for each unit by applying a FFT
     to a specified number of samples of the curve. The DC component (f0)
     and first harmonic (f1) are taken from the FFT and used to compute
