@@ -511,7 +511,8 @@ class ComplexityAnalysis(ParameterizedFunction):
         label = phase_image.label
         roi = p.roi if p.roi is not None else bounds.lbrt()
         with sorted_context(False):
-            grid = DFrame(phase_tuning.sample((cols, rows), bounds=roi).dframe()).curve('Phase', 'Response').grid(['x', 'y'])
+            phase_tuning_df = DFrame(phase_tuning.sample((cols, rows), bounds=roi).dframe())
+            grid = phase_tuning_df.curve('Phase', 'Response', ['Time', 'x', 'y']).grid(['x', 'y'])
 
         results = Layout()
         sheet_stack = HoloMap(None, key_dimensions=grid.values()[0].key_dimensions)
