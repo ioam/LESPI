@@ -118,7 +118,6 @@ class measure_size_tuning(UnitMeasurements):
                 ref_orpref = orpref.last[coord]
                 ortables = orpref.sample((rows, cols), bounds=lbrt)
                 or_df = ortables[topo.sim.time(), :].dframe()
-                print or_df.columns, size_df.columns
                 size_df = pandas.merge(size_df, or_df, on=['x', 'y', 'Time', 'Duration'])
                 filter_condition = (np.abs(size_df[ordim] - ref_orpref) % np.pi) < p.max_ordiff
                 size_df = size_df[filter_condition]
@@ -147,7 +146,7 @@ class measure_size_tuning(UnitMeasurements):
                 size_df = pandas.concat(size_dataframes[output])
                 size_stack = HoloMap(None, key_dimensions=['Time', 'Contrast'])
                 for k, cdf in size_df.groupby(['Contrast']):
-                    cdf = cdf.filter(['Peak_Size', 'SI', 'Suppression_Size', 'CS_Size', 'CSI'])
+                    cdf = cdf.filter(['Peak Size', 'SI', 'Suppression Size', 'CS Size', 'CSI'])
                     size_stack[(topo.sim.time(), k)] = DFrame(cdf, group='Size Tuning Analysis')
                     results.set_path(('SizeTuning', output), size_stack)
 
@@ -774,5 +773,8 @@ class measure_flanker_yoffsetmodulation(measure_flanker_modulation):
                 FlankerContrast(values=[float(c)/100 for c in p.flankercontrasts],
                                 preference_fn=None)]
 
-Store.options.DFrame.Size_Tuning_Analysis = Options('plot')
-Store.options.DFrame.Contrast_Size_Tuning_Shift = Options('plot')
+
+options = Store.options(backend='matplotlib')
+
+options.DFrame.Size_Tuning_Analysis = Options('plot')
+options.DFrame.Contrast_Size_Tuning_Shift = Options('plot')
