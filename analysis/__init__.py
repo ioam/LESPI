@@ -13,11 +13,12 @@ from holoviews.core.ndmapping import sorted_context
 from holoviews.ipython.widgets import ProgressBar
 from holoviews.interface.collector import Layout
 from holoviews.interface.seaborn import DFrame
-from holoviews.operation import MapOperation, ElementOperation
+from holoviews.operation import MapOperation, ElementOperation, transform
 
 import imagen
 from imagen import Composite, RawRectangle
 
+from featuremapper.analysis import cyclic_difference
 from featuremapper.analysis.spatialtuning import SizeTuningPeaks, SizeTuningShift,\
     OrientationContrastAnalysis, FrequencyTuningAnalysis
 from featuremapper.command import FeatureCurveCommand, DistributionStatisticFn, \
@@ -26,6 +27,12 @@ from featuremapper.command import FeatureCurveCommand, DistributionStatisticFn, 
 import featuremapper.features as f
 
 import topo
+
+class similarity_analysis(MapOperation):
+
+    def _process(self, ormaps, key=None):
+        ordata = ormaps * ormaps.last
+        return transform(cyclic_difference(ordata), operator=lambda x: 1-2*x)
 
 
 class SheetReductionCurve(MapOperation):
