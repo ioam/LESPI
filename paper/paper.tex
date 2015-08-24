@@ -1,422 +1,117 @@
-% Created 2013-11-25 Mon 14:59
-\documentclass[11pt]{Science}
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage{graphicx}
-\usepackage{longtable}
-\usepackage{float}
-\usepackage{wrapfig}
-\usepackage{soul}
-\usepackage{amssymb}
-\usepackage{hyperref}
+\title{Relating the diversity of interneuronal subtypes to their functional roles in development, homeostasis and sensory processing}
+\author
+{Philipp Rudiger,$^{1\ast}$ James A. Bednar,$^{1}$\\
+\\
+\normalsize{$^{1}$Institute for Adaptive and Neural Computation, University of Edinburgh,}\\
+\normalsize{School of Informatics, Edinburgh, EH8 9AB, United Kingdom}\\
+\\
+\normalsize{$^\ast$To whom correspondence should be addressed; E-mail:  P.Rudiger@ed.ac.uk.}
+}
+\date{\today}
 
+\documentclass[12pt]{article}
 
-\title{	Relating the diversity of interneuronal subtypes to their functional roles in development, homeostasis and sensory processing}
-\author{Philipp Rudiger}
-\date{25 November 2013}
+\usepackage{natbib}
+\usepackage{gensymb}
+\usepackage[margin=0.5in]{geometry}
 
 \begin{document}
-
 \maketitle
 
-\setcounter{tocdepth}{3}
-\tableofcontents
-\vspace*{1cm}
-\section{Sunday 10th}
-\label{sec-1}
-
-
-\subsection{Knoblich, Cardin: Role of SOM and PV populations in anaesthetized and awake mouse V1}
-\label{sec-1.1}
-
-
-Under anaesthesis SOM neurons are only very weakly recruited such that PV neurons dominate
-In awake animals SOM cells are strongly recruited and SOM and PV populations provide balanced inhibition
-Population effect of inhibition under anaesthesis is multiplicative in the contrast response turning subtractive when awake
-In awake animals some cells have inverted contrast response
-
-PV activation causes decrease in Pyramidal cell firing
-
-\subsection{Seybold, Hasenstaub and Schreiner: Functional effects of activating somatostatin positive interneurons in auditory cortex}
-\label{sec-1.2}
-
-
-Activating Sst-irs shortens response duration
-Activating Sst-irs narrows response bandwidth
-Attempt to fit suppression with divisive and subtractive models
-Subtractive model predicts equal effects at center and edges, while divisive suppression would cause greater suppression at edges than at center since thalamocortical input is not as strongly affected
-Data sugests mixture of the two
-40\% divisive, 30\% subtractive, 15\% both
-
-Sst activation increases response selectivity
-
-\subsection{Chen, Gilbert et al.: Dual labeling of figural elements in V1}
-\label{sec-1.3}
-
-
-Using contour, texture and popout stimuli in macaque
-Neural responses display clear late enhancement of contour elements, while the early response is unaffected by global context
-
-\subsection{Cattan et al.: Plasticity increases with orientation gradient in V1 and V2}
-\label{sec-1.4}
-
-
-Using a 12 minute adaptation protocol, measuring the shift in orientation response using optical imaging they showed that the gradients in OR changes correlate with the magnitude of the adaptation induced orientation shift. They also suggest that pinwheel centers are not fixed and map displays significant dynamic reorganization.
-
-\subsection{Sato et al.: Functional role of acetylcholine in visual cortex of rats:}
-\label{sec-1.5}
-
-
-ACh application improves contrast sensitivity of V1 neurons, particularly at low contrasts
-
-\subsection{Ritter et al. (van Hooser lab): Rapid emergence of direction selectivity:}
-\label{sec-1.6}
-
-
-Replicating results from Li et al. (2008),  they show that direction selectivity can emerge over the space of 6 hours with consistent visual stimulation.
-Covered a range of temporal frequencies showing that direction selectivity emerges between \~{}0-10Hz
-van Hooser lab now largely focused on development of direction selectivity but also trying to get optogenetic manipulations to work (put on hold for now)
-
-\subsection{Zhuang/Swadlow: Layer 4 in V1 of awake rabbit: Contrasting properties of simple cells and putative feed-forward inhibitory interneurons}
-\label{sec-1.7}
-
-
-Clear distinction between the simple cells and inhibitory interneurons:
-PV cells less tuned in SF, TF, OR
-Much higher spontaneous firing rates (\~{}20 Hz vs \~{}2Hz)
-PV cell have overlapping ON, OFF lobes, displaying complex cell characteristics
-Published in Journal of Neuroscience (2013) 32(28): 11372-89
-
-\subsection{Bachatene et al.: Correlating neuronal activity adaption induced plasticity in V1}
-\label{sec-1.8}
-
-
-lyes.bachatene@umontreal.ca
-
-Exposed adult cats to 12 minute adaptation protocol, showing single orientation drifting sine-gratings
-Using cross-correlation between trains of spikes between neuronal pairs tried to determine changes in functional connectivity between cells
-Results indicate a decorrelation of connection probabilities for the optimal orientation as well as the newly acquired prefered orientation after adaptation
-In discussion, he argued that this speaks against a simple firing rate based homeostatic mechanisms where neurons responsive to one the adapted orientation simply reduce firing
-
-\subsection{Kuhlman et al.: Development of GABAergic neuron response properties in visual cortex}
-\label{sec-1.9}
-
-
-Kuhlman lab just set up so just preliminary results and from previous lab
-PV neurons untuned in early development but broaden in mature animals
-Suggested model is that early PV neurons receive strong input from just a few cells, which causes orientation bias.
-PV neurons become less tuned during development as they begin pooling from a larger set of neurons.
-Next step to test this hypothesis by looking at subthreshold inputs to PV cells during development.
-
-\subsection{Veit et al.: Infrequent simple cells in tree shrew primary visual cortex}
-\label{sec-1.10}
-
-
-When measuring RFs with sparse stimuli, orientation preference cannot be observed, only Hartley stimuli reveal OR preference of neurons.
-They suggest this is because tree shrew neurons achieve orientation tuning through cortical inputs, which does not occur when stimulating with sparse inputs.
-Additionally they carried out basal forebrain stimulation experiment showing very large increases in firing rates, which conflicts with studies in macaque where effects in V1 were more modest.
-
-\subsection{Kang/Vaucher: Cortical enhancement induced by pairing cholinergic system and repetitive exposure to visua stimulus is mediated by GABAergic modulation}
-\label{sec-1.11}
-
-
-Daily pairing of ACh system activation and visual stimulation induced improvements in visual acuity and increase in V1 responses
-This effect is mediated by GABAergic modulation, where GABA activation abolished the effect while GABAAR inhibition enhances the cholinergic stimulation effect
-
-
-\section{Monday 11th}
-\label{sec-2}
-
-
-\subsection{Gilad and Slovin: One or two figures: can neuronal populations in V1 distinguish}
-\label{sec-2.1}
-
-
-Introduction discusses the Gilad et al., Neuron 2013 paper
-But what happens when there are several figures, which are not directly connected
-Using VSDI imaging of V1, 10,000 pixels resolution, 10 ms per frame
-
-Two stimuli
-
-\begin{verbatim}
- ---------------------
-\end{verbatim}
-
-
-\begin{verbatim}
- ---------------------
-\end{verbatim}
-
-
-and
-
-\begin{verbatim}
- ---------------------
- |                   |
- ---------------------
-\end{verbatim}
-
-
-Three hypothesis of how V1 can distinguish between different figures: 1) Not at all 2) Response amplitude differences 3) Greater synchrony between connected figures
-
-Task to discriminate between the two but varied pattern by only having one connector, and different lengths
-Retinotopically imaged the central region of the stimuli, with top and bottom bar included
-
-In early response activation is approximately equal for connected top and bottom stimulus
-In separated case, the top bar has larger response than bottom bar, difference arising after about 200ms, same but opposite effect for bottom bar
-
-Lower synchrony beyween the bars when they are separated
-
-Amplitude difference code allows for the best discriminaton between the figures
-
-\subsection{Andrei et al. (Dragoi lab): Improved perceptual performance following optogenetic stimulation of V1 excitatory neurons}
-\label{sec-2.2}
-
-
-Transfected 11/8 columns in two monkeys
-Low contrast detection task
-Some neurons responded to the laser, the stimulus or both
-Laser stimulation combines nonlinearly with increasing stimulus contrast
-With increasing contrast the laser response decreases, unclear what causes this but may be local inhibitory response gain control
-Effect of laser stimulation can be found in downstream area V4
-Detection performance improves following activation of stimulus-tuned excitatory neurons
-Stimulating away from the injection site proved ineffective (control)
-Behavior was modulated only with stimulation of stimulus driven neurons
-
-Suggests that for stimulus detection downstream areas integrate information from a larger pool of neurons than are activated by the laser
-
-Summary:
-
-Stimulus detection improved by 8\%
-
-\subsection{Sato, Haeusser and Carandini: Lateral connectivity causes divisive normalization in visual cortex}
-\label{sec-2.3}
-
-
-Argue that the role of distal connectivity in V1 changes with the visual context. Overall a very similar story to what I'm arguing for.
-
-\subsection{Han, Sader, Pecka and Mrsic-Flogel: The coding of centre and surround naturalistic stimuli by pyramidal, parvalbumin and somatostatin neurons in mouse visual cortex}
-\label{sec-2.4}
-
-
-PV, SOM show only weak surround suppression, showing a fairly flat area summation curve, responding more strongly for large stimuli than the Pyr population.
-All three cell types receive less large amplitude synchronized inputs when presented with full-field stimuli.
-
-\subsection{Rossi et al.: Imaging visual cortex in awake mice with genetically-encoded voltage and calcium indicators}
-\label{sec-2.5}
-
-
-Voltage indicators can replicate retinotopic mapping results recorded with 2P-Ca imaging
-
-\subsection{Kaschube et al.: Visual training induced decrease in noise correlation indicates a  dominant role of recurrent connections in visual cortical motion processing}
-\label{sec-2.6}
-
-
-see also: Tsigankov and Kaschube: Two distinct mechanisms for mergence of direction selectivity coexist in generic random recurrent neural networks
-
-Consider two models of direction preference development: thalamocortical latency model and recurrent connectivity model
-A network with bias towards inhibition and high variance in recurrent connection strength allows for the emergence of direction selectivity since one direction will be suppressed while the other will not. In particular strong inhibitory connections seem to be important for mediating this effect. The distribution of direction selectivities under this model better matches experimental data than the latency model. It also better accounts for noise correlations between neurons when compared to data from Li et al. (2008).
-
-\subsection{Hartman and Wehr: Parvalbumin-expressing inhibitory interneurons in auditory cortex are well-tuned for frequency}
-\label{sec-2.7}
-
-
-Results seem to confirm the local pooling hypothesis of PV neurons
-Silencing PV-ir neurons has a strong effect on timing and reliability of responses.
-PV-ir neurons seem to be responsible for controlling the spread of recurrent amplification (i.e. bubble formation)
-
-\subsection{Gomez-Laberge et al.: Increasing the visuotopic extent of normalization through cortico-cortical feedback}
-\label{sec-2.8}
-
-
-Corticocortical feedback from V2/V3 contributes to surround suppression by increasing the visuotopic extent of the normalization pool but not its strength
-Also confirms once again that normalization is generally mediated by a mechanism, which is either thalamocortical or within V1
-
-\subsection{Bosking et al.: Coding of stimulus orientation and position by cells in tree shrew primary visual cortex examined by 2P-Ca imaging}
-\label{sec-2.9}
-
-
-Bosking is trying to push tree shrew as a model of V1 development
-No real new results, just showing orientation maps from tree shrew at single cell resolution, confirming that orientation tuning is much broader near pinwheels
-
-\subsection{Trott et al.: How smart is surround suppression in V1 and how dumb does it get when feedback from V2/V3 is removed}
-\label{sec-2.10}
-
-
-Feedback inactivation through cooling of V2/V3 reduces the context dependence of surround suppression
-Citing the Shushruth 2012 paper argues that suppression isn't necessarily matched to the orientation preference of a neuron, rather to the relative orientation of stimulus in the RF center
-Stimulus was 0.3 deg in the center, 0.6 degree gap and 3.0 degree annulus
-
-\subsection{Thiele et al.: Cholinergic contribution to visual attention in occipital and frontal cortex}
-\label{sec-2.11}
-
-
-FEF area where attentional signals are supposedly generated
-Send feedback signals to sensory areas
-Coordinates oscillatory behavior in V4
-
-Covert attention task, monkey focuses centrally, is cued and has to attend the cued location, reporting change in cued location but not uncued location
-ACh mostly increases responses of neurons
-Scopolamine reduces neuronal activity
-Mecamylamine also reduces neuronal activity
-Methylcaconitine has a smaller effect but also reduces activity
-
-After cue presentation the attend RF condition response is increased and Fano factor is reduced
-Application of ACh increases activity for both attend RF and attend away condition but makes no difference in attention mediated rate increase
-ACh reduces MI simply because the mean response is increased
-
-When blocking mAChRs there is a increase in attention modulation index (MI) again due to the mean offset effect
-Nicotinic blockade has a similar effect as muscarinic blockade
-
-\subsection{Self, Poort, Brandsma: Post Thiele Talk}
-\label{sec-2.12}
-
-
-Laminar response of figure ground segregation is strongest in superficial and deep layers
-Current source density shows that the source of the figure-ground signal is layer 1 and deep layers congruent with feedback mediated mechanism
-FF connection driven by AMPA receptors while FB connections are mediated by Glu
-FF input gets rid of the NMDA adhesion block allowing FB input to exert influence
-By using an AMPA blocker, the visual response is reduced but the FGM is maintained
-By using an NMDA blocker, the visual response is largely maintained but FGM is reduced
-
-Some suggestion that Alpha oscillation are driven by inhibitory feedback, while Gamma oscillation are more strongly driven by FF
-This seems to be confirmed by both current source density measurements and blockade of AMPA and NMDA
-Finally microstimulation in V1 caused increase in V4 Gamma band while V4 stimulation caused Alpha band increase in V1
-
-\subsection{Anita Disney: Actions of acetylcholine in the local circuits of the visual cortex}
-\label{sec-2.13}
-
-
-Important differences exist in the cholinergic system across different species
-
-Nicotinic receptors in primary sensory cortex may have a canconical localization/function
-The same is not true for muscarinic receptors
-
-nAChrs cause fast depolarization of neuron
-mAChrs can induce wide array of signalling cascades within a cell
-
-Gil et al. 1997 observed that ACh suppresses recurrent excitation and enhances ascending drive
-Strong evidence from different sensory areas (somatosensory, auditory and visual) and across species (rodentia, primata, felines)
-
-Does ACh suppress recurrent excitation across species also?
-In macaque V1 very few excitatory neurons express muscarinic ACh receptors (true for both m1- and m2- receptors) \~{}10\%
-Presynaptic expression is also very low presynaptically (5\% express m1, 4\% express m2)
-Inhibitory expression is much greater, 28\% of inhibitory neurons express m2 and 61\% express m2
-Most PV neurons in macaque express muscarinic ACh receptors \~{}75\%
-In rat PV neurons rarely ever express mAChRs
-
-In the Disney and Reynolds 2013 paper they confirm these results, macaque and human being very similar
-In the extrastriate cortex of macaque, PV neurons still generally express PV neurons, the same is generally true for all inhibitory neurons
-In extrastriate areas many more excitatory neurons express the m1-receptor
-This may be related with the role of ACh in attention, particularly modulating the integration of information across the cortex
-
-\subsection{An, Gong, McLoughlin, Yang and Wang: The neuronal mechanism for processing random-dot motion at various speeds in early visual cortices}
-\label{sec-2.14}
-
-
-All recorded neurons encoded the motion direction of the stimulus, primarily at low speed
-Above certain speed (15 deg/s) neurons preferring directions perpendicular to motion direction begin responding more strongly
-
-\subsection{Hartman and Born: Does V1 anticipate moving stimuli?}
-\label{sec-2.15}
-
-
-Used multiunit recordings from macaque V1 and a moving bar moving across a grey background at a constant velocity (5 deg/s)
-Typical response begins 35-55 ms after bar onset.
-Generated spatio-temporal population kernel and convolved it with representation of moving bar.
-Actual motion response led this linear prediciton model by 19 ms, linear model also matched the rising phase far better than the trailing response, which dropped very quickly after bar had passed.
-They suggest this difference can be accounted for by adaptation either via cellular mechanism or by feedback gain control
-By adding negative feedback component to the model the fit was improved and drop in firing rate after passing of motion stimulus was reproduced.
-They conclude that peak response time for a moving stimulus compensates partially for the visual latency but not sufficiently to contribute to object position prediction
-
-\subsection{Izhikevich/Brain Corp. models:}
-\label{sec-2.16}
-
-
-Large section with a number of posters, largely the same as previously presented work and not very well attended
-Their work suggests that FS/PV cells remove the DC component of responses, while LTS cells impose a sparse response and balance out feedback excitation
-Several noteworthy comments, they suggested that inverted-STDP rules capture the learning of connections between V1 pyramidal neurons since a neuron that is delayed in its response to a stimulus compared to another neuron, which has no such delay will then preferentially connect. Did not make complete sense to me. Furthermore, they allowed long-range inhibitory connections, side-stepping the issue when asked about it, first answering maybe that's the case experimentally, then evading by saying that they aren't trying to replicate biology. Finally when asked whether all connections in their model are plastic they state that FS neurons, which receive thalamocortical inputs are not plastic. No clear answer when asked what their initial connections are.
-
-
-\section{Tuesday 12th}
-\label{sec-3}
-
-
-\subsection{Lien and Scanziani: Receptive fields and orientation tuning of thalamic excitation onto single neurons of the mouse’s visual cortex}
-\label{sec-3.1}
-
-
-Results confirm that the pattern of ON/OFF afferents sampled by a V1 neuron predicts the orientation tuning of a V1 neuron
-RFs of the afferent fibers themselves seem to be overlapping but spatially offset lobes showing little elongation
-
-\subsection{Pfeffer et al. (Scanziani lab): Inhibition of inhibition in visual cortex: The logic of connections between molecularly distinct gabaergic neurons}
-\label{sec-3.2}
-
-
-Using cre-lines in mice they try to figure out the connectivity between different inhibitory cell classes in mouse V1, results are largely the same as in the recent Pfeffer et al. paper
-
-\subsection{Reinhold and Scanziani: Role of thalamocortical input to mouse primary visual cortex in maintenance of excited states}
-\label{sec-3.3}
-
-
-Stimulus evoked responses require continued thalamic input for maintenance of response
-Cortical activity is dampened by inhibition resulting in a fast cortical time constant
-Reducing the amount of cortical inhbition prolongs the time course of the cortical stimulus evoked response, after the thalamus is silenced
-
-\subsection{Xue and Scanziani: Cell-type specific homeostatic mechanisms in mouse visual cortex}
-\label{sec-3.4}
-
-
-Neighboring layer 2/3 neurons receive different amounts of excitation from layer 4 inputs, the activity of layer 2/3 Pyramidal neurons regulates PV mediated inhbition equalizing the E/I ratio in the pyramidal population throughout the cortex
-
-\subsection{Missing afternoon session}
-\label{sec-3.5}
-
-Still missing summary of afternoon session since I was presenting my own poster, will request summary from Scott Lowe and have sent emails to authors requesting copies of posters
-
-
-\section{Wednesday 13th}
-\label{sec-4}
-
-
-\subsection{Zhang et al.: Information processing by retinothalamic circuits contributes to contrast adaptation}
-\label{sec-4.1}
-
-
-They fitted three models to LGN responses:  1) Simple LNP model, 2) Retinal spike driven model and 3) a combined model. The retinal component could explain the response very well on its own but the combined model showed additional delayed modulation, suggesting that intra-LGN or feedback mechanisms contribute towards contrast adaptation in anaesthetized animals (mouse)
-
-\subsection{Hassey et al. (Briggs lab): Corticogeniculate feedback modulates gain of LGN responses in ferret}
-\label{sec-4.2}
-
-
-Through optogenetic stimulation of corticogeniculate feedback pathway in V1 layer 6 they showed a clear increase in temporal frequency stimulus gain and an even more striking reduction in the delay of the response measured using sparse noise STA (up to 40 ms)
-
-\subsection{Markram lab: Various posters}
-\label{sec-4.3}
-
-
-Posters weren't well attended and only interesting work involved statistics based fits to experimenta data (2P-Ca2+ and LFP)
-Introduced a simplified model of their cortex using IF neurons to solve a ball balancing task using a number of place field sensors as input and a reward based learning rule
-
-\subsection{Kiley et al. (Usrey lab):}
-\label{sec-4.4}
-
-
-LGN RFs sharpen very early in development, while latencies drop much later in development
-
-\subsection{Ishibashi et al.: Time course of far-surround modulation of perceived contrast}
-\label{sec-4.5}
-
-
-Referencing Xing and Heeger (2001) results, which showed iso-orientation suppression and facilitation depending on contrast
-By varying the onset delay of the surround stimulus they showed that the contextual modulation is strongly affected by this delay.
-On this basis they suggest that far surround modulation is mediated by fast feedback connections (overall story was difficult to follow)
-
-\subsection{Van Stijn et al. (Lee lab): Neuronal modulation related to contour integration in V1}
-\label{sec-4.6}
-
-
-Reference and try to replicate the Gilad and Slovin results on contour integration looking also at the temporal coherence in reponses
-Did not observe a large effect but did demonstrate increased response coherence in figure response vs. background response
+\begin{abstract}
+A circuit-level understanding of the cortex has long been sought, but
+only recently have improvements in genetic and imaging methods allowed
+systematic investigation of the roles of different interneuron
+classes. In particular, the chemical markers parvalbumin (PV),
+somatostatin (Sst) and vasoactive-intestinal peptide (VIP) have been
+found to divide interneurons into three non-overlapping subtypes that
+roughly correspond to previous, functionally defined subtypes
+\cite{Pfeffer2013}. Studies show roles for these cells in a wide array
+of processes across different time scales, including development,
+homeostasis, and instantaneous sensory responses. We present an
+analysis investigating the involvement of these interneuron classes
+across all of these spatial and temporal scales, using a rate-based
+model of map development in primary visual cortex. The model includes
+the main anatomical and functional properties of the two most common
+GABAergic neuron types in the cortex, PV+ and Sst+ interneurons
+\cite{Pfeffer2013}. PV+ neurons receive strong feedforward input,
+provide perisomatic inhibition, and are typically only weakly feature
+selective \cite{Hofer2011}, while Sst+ neurons preferentially synapse
+on distal dendrites and mostly receive input from horizontal axons
+within layer 2/3 \cite{Xu2009}. Sst+ neurons are driven by
+facilitating synapses, and thus respond strongly only for high
+contrasts or large stimuli \cite{Adesnik2012}, giving them lower
+firing rates, stronger feature preference, and longer response
+latencies. The model allows us to link particular properties of these
+inhibitory neurons to specific functional roles, through parameter
+space exploration and lesion studies. The results show that the fast
+response of PV+ neurons makes them suited to balance feedforward
+excitation, while their broad activation helps sparsify cortical
+activity. This suggests a central role of PV+ neurons in map
+development and maintaining stability in the early sensory
+response. In contrast, Sst+ neurons are primarily recruited under high
+contrast conditions or for large stimuli, which results in a
+contrast-dependent switch in surround modulation from facilitation to
+suppression. Overall, our analysis suggests that PV+ neurons are
+central to organized development and balancing the instantaneous
+response, while Sst+ neurons integrate over larger temporal and
+spatial scales and mediate a range of surround modulation effects.
+\end{abstract}
+
+\section{Introduction}
+\begin{table}
+  \centering
+  \begin{tabular}{l | l l l l}
+    Connection               & Literature            & Species & Layer & $\sigma$ \\
+    \hline
+    LGN-V1 Afferents         & \cite{Angelucci2002c} & macaque & 4C$\alpha$ & $0.8-1.6\degree$ \\ 
+                             & \cite{Angelucci2006a} & macaque & 4A/4C$\beta$ & $0.91 \pm 0.041 \degree$ \\
+    \hline
+    V1 local excitation      & \cite{Buzas2006}      & cat      & 2-4 single cell & $288 \mu m$ \\
+                             & \cite{Buzas2006}      & cat      & 2-4 population  & $520 \mu m$ \\
+    \hline
+    V1 basket cells          & \cite{Buzas2001}      & cat      & 2-6 & $0.7-1.9 \degree$ \\
+                             & \cite{Buzas2001}      & cat      & 2-6 & $0.76-2.6 mm$ \\
+    \hline
+    V1 long-range excitation & \cite{Angelucci2002}  & macaque  & 2/3 & $6\pm 0.7 mm$ (3-9) \\
+                             &                       &          & 4B/4C$\alpha$ & $6.7 \pm 0.7 mm$ (4.7-10) \\
+                             &                       &          & population & $2.47 \pm 0.3 \degree$ \\
+                             & \cite{Buzas2006}      & cat      & 2/3 & $6 mm$ \\
+    \hline
+  \end{tabular}
+  \caption[]%
+          {Anatomical estimates of the spatial profiles of V1 connectivity.}
+  \label{anatomicaltable}
+\end{table}
+
+\begin{table}
+  \centering
+  \begin{tabular}{l | l l l l}
+    Measurement              & Literature            & Species & Layer & $\sigma$ \\
+    \hline
+    LGN Excitatory DoG fit   & \cite{Sceniak2006}    & cat     & 4A/4C$\alpha$/4C$\beta$ & $0.22$/$0.51$/$0.46\degree$ \\
+    LGN Inhibitory DoG fit   & \cite{Sceniak2006}    & cat     & 4A/4C$\alpha$/4C$\beta$ & $0.5$/$0.62$/$0.51\degree$ \\
+    \hline
+    hsRF                     & \cite{Levitt2002}     & macaque & 2-6 & $1.0 \pm 0.2 \degree$ (0.3 - 2.2) \\
+    \hline
+    V1 Excitatory DoG fit    & \cite{Levitt2002}     & macaque & 2-6 & $0.9 \degree$ \\
+                             & \cite{Sceniak2001}    & cat     & 2-6 & $1.0 \degree$ \\
+                             & \cite{Cavanaugh2002}  & macaque & 2-6 & $1.4 \degree$ \\
+                             & \cite{Solomon2004}    & macaque & not stated & $0.94 \degree$ \\
+    \hline
+    V1 Inhibitory DoG fit    & \cite{Levitt2002}     & macaque & 2-6 & $1.9 \degree$ \\
+                             & \cite{Sceniak2001}    & cat     & 2-6 & $2.2 \degree$ \\
+                             & \cite{Cavanaugh2002}  & macaque & 2-6 & $2.7 \degree$ \\
+                             & \cite{Solomon2004}    & macaque & not stated & $2.97 \degree$ \\
+    
+    \hline
+  \end{tabular}
+  \caption[]%
+          {Anatomical estimates of the spatial profiles of V1 connectivity.}
+  \label{anatomicaltable}
+\end{table}
+
+\bibliographystyle{apalike}
+\bibliography{paper}
 
 \end{document}
