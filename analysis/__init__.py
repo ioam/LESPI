@@ -3,10 +3,12 @@ from collections import defaultdict
 import numpy as np
 import pandas
 from scipy.optimize import curve_fit
+import scipy.special as ss
 
 import param
 from param import ParameterizedFunction, ParamOverrides
 
+import holoviews as hv
 from holoviews import HoloMap, Dimension, Image, Table, GridSpace, ItemTable
 from holoviews.core.options import Store, Options
 from holoviews.core.ndmapping import sorted_context
@@ -15,8 +17,9 @@ from holoviews.interface.collector import Layout
 from holoviews.interface.seaborn import DFrame
 from holoviews.operation import MapOperation, ElementOperation, transform
 
-import imagen
+import imagen as ig
 from imagen import Composite, RawRectangle
+from imagen.transferfn import DivisiveNormalizeL1
 
 from featuremapper.analysis import cyclic_difference
 from featuremapper.analysis.spatialtuning import SizeTuningPeaks, SizeTuningShift,\
@@ -487,6 +490,105 @@ class RFGaborFit(param.ParameterizedFunction):
         return [rf.clone(fit_data), rf.clone(residual, label='Residual'), fit_table]
 
 
+def vonMises(phi, k, mu):
+    """
+    The vonMises function generates a weighting for different
+    cyclic quantities phi from a vonMises distribution centered
+    around mu with a kernel width k.
+    """
+    return (1/(2*np.pi*ss.i0(k))) * np.e**(k*np.cos(2*(phi-mu)))
+
+
+
+class CFvonMisesFit(param.ParameterizedFunction):
+    """
+    CFvonMisesFit takes a grid of lateral CFs and an orientation map as input
+    and fits a vonMises function combined with a Gaussian function to both.
+    Replicates Buzas 2006 model of patchy lateral excitatory connectivity in V1.
+    """
+
+    max_iterations = param.Integer(default=1000)
+
+    projection = param.String(default='LateralExcitatory')
+
+    threshold = param.Number(default=70, doc="""The threshold below which
+        weights are ignored, expressed as a percentile""")
+
+    lateral_size = param.Number(default=2.5, doc="""
+        The size of the lateral CFs in sheet coordinates""")
+
+    fit_aspect = param.Boolean(default=False, doc="""
+        Whether to allow fitting the aspect ratio of the Gaussian""")
+
+    sheet = param.String(default='V1Exc')
+
+    roi_radius = param.Number(default=None, allow_None=True)
+
+    def _function(self, orpref, k, mu1, mu2, weight=0, x=0, y=0, aspect=1, ravelled=True):
+        l, b, r, t = orpref.bounds.lbrt()
+        if k < 0 or mu1 < 0 or mu2 < 0 or x > r or x < l or y > t or y < b:
+            return np.ones(orpref.data.shape).ravel()*10**6
+        mask = ig.Disk(x=x, y=y, xdensity=orpref.xdensity, smoothing=0, ydensity=orpref.ydensity,
+                       size=self.p.lateral_size, bounds=orpref.bounds)()
+        gaussian = ig.Gaussian(x=x, y=y, xdensity=orpref.xdensity, ydensity=orpref.ydensity,
+                               orientation=orpref[x, y], aspect_ratio=aspect, mask=mask,
+                               size=mu1, bounds=orpref.bounds)
+        fit = vonMises(orpref.data, k, orpref[x, y]) * gaussian()
+        gaussian2 = ig.Gaussian(x=x, y=y, xdensity=orpref.xdensity, ydensity=orpref.ydensity,
+                                mask=mask, size=mu2, bounds=orpref.bounds)
+        fit += gaussian2() * weight
+        DivisiveNormalizeL1()(fit)
+        if ravelled:
+            fit = fit.ravel()
+        return fit
+
+
+    def __call__(self, tree, **params):
+        self.p = param.ParamOverrides(self, params, allow_extra_keywords=True)
+
+        grid = tree.CFs[self.p.projection]
+        orpref = tree.OrientationPreference[self.p.sheet]
+
+        results = Layout()
+        vdims = ['k', 'mu1', 'mu2', 'weight', 'xfit', 'yfit']
+        if self.p.fit_aspect:
+            vdims += 'aspect'
+        lateral_fits = hv.Table(kdims=['x', 'y']+grid.values()[0].kdims,
+                                vdims=vdims)
+        fit_grid = hv.GridSpace()
+        residual_grid = hv.GridSpace()
+        for idx, ((x, y), sheet_stack) in enumerate(grid.items()):
+            for key, view in sheet_stack.items():
+                processed = self._process(view, orpref[key], (x, y))
+                fit, fit_lateral, error = processed
+                if (x, y) not in fit_grid:
+                    fit_grid[(x, y)] = sheet_stack.clone({key: fit_lateral})
+                    residual_grid[(x, y)] = sheet_stack.clone({key: error})
+                lateral_fits[(x, y) + key] = tuple(fit)
+                fit_grid[x, y] = fit_lateral
+                residual_grid[x, y] = error
+
+        results.set_path(('vonMisesFit', 'RF_Fit'), fit_grid)
+        results.set_path(('vonMisesFit', 'RF_Residuals'), residual_grid)
+        results.set_path(('vonMisesFit', 'Fit_Results'), lateral_fits)
+        return results
+
+
+    def _process(self, cf, orpref, key=None):
+        x, y = key
+        lat_data = cf.last.situated.data.copy()
+        lat_data[lat_data < np.percentile(lat_data[lat_data.nonzero()], self.p.threshold)] = 0
+        DivisiveNormalizeL1()(lat_data)
+        initial = (1, 1, 0.1, 1, x, y)
+        if self.p.fit_aspect:
+            initial += (1,)
+        fit, _ = curve_fit(self._function, orpref.last, lat_data.ravel(), p0=initial)
+        fit_lateral = hv.Image(self._function(orpref.last, *fit, ravelled=False),
+                               bounds=orpref.bounds)
+        error = fit_lateral.clone(lat_data-fit_lateral.data, group='vonMises Error')
+        return [fit, fit_lateral, error]
+
+
 
 class ComplexityAnalysis(ParameterizedFunction):
     """
@@ -566,7 +668,7 @@ class measure_response_latencies(UnitMeasurements):
 
     durations = param.List(default=[0.05*i for i in range(21)])
 
-    pattern = param.Parameter(default=imagen.Gaussian)
+    pattern = param.Parameter(default=ig.Gaussian)
 
     outputs = param.List(default=['V1Exc', 'V1PV', 'V1Sst'])
 
