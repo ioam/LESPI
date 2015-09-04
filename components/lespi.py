@@ -12,12 +12,13 @@ import topo.transferfn.optimized
 import topo.responsefn.optimized
 import topo.sheet.optimized
 from topo.submodel.earlyvision import EarlyVisionModel
+from topo.submodel.scal import EarlyVisionSCAL
 from topo.submodel import Model
 
 from . import MultiplyWithConstant
 
 @Model.definition
-class ModelSEPI(EarlyVisionModel):
+class ModelSEPI(EarlyVisionSCAL):
 
     area = param.Number(default=2.0,bounds=(0,None),
         inclusive_bounds=(False,True),doc="""
@@ -57,9 +58,6 @@ class ModelSEPI(EarlyVisionModel):
 
     # Afferent Inputs #
 
-    lgnaff_str=param.Number(default=10.0, doc="""
-        Retinal afferent strength""")
-
     lgn2exc_str=param.Number(default=2.0, doc="""
         Thalamocortical afferent strength""")
 
@@ -92,7 +90,7 @@ class ModelSEPI(EarlyVisionModel):
     locexc_lr=param.Number(default=0.0, doc="""
         Local excitatory connection strength""")
 
-    latpv_lr=param.Number(default=0.25, doc="""
+    latpv_lr=param.Number(default=0.0, doc="""
         Lateral PV excitatory projection strength""")
 
     pv_lr=param.Number(default=0.25, doc="""
@@ -105,27 +103,6 @@ class ModelSEPI(EarlyVisionModel):
     # Spatial Calibration #
     #=====================#
 
-    center_size = param.Number(default=0.2, bounds=(0, None), doc="""
-        The size of the central Gaussian used to compute the
-        center-surround receptive field.""")
-
-    surround_size = param.Number(default=0.3, bounds=(0, None), doc="""
-        The size of the surround Gaussian used to compute the
-        center-surround receptive field.""")
-
-    lgnaff_radius = param.Number(default=0.4, bounds=(0, None), doc="""
-        Connection field radius of a unit in the LGN level to units in
-        a retina sheet.""")
-
-    lgnlateral_radius = param.Number(default=0.5, bounds=(0, None), doc="""
-        Connection field radius of a unit in the LGN level to
-        surrounding units, in case gain control is used.""")
-
-    gain_control_size = param.Number(default=0.8, bounds=(0, None), doc="""
-        The size of the divisive inhibitory suppressive field used for
-        contrast-gain control in the LGN sheets. This also acts as the
-        corresponding bounds radius.""")
-
     v1aff_radius = param.Number(default=0.5, bounds=(0, None), doc="""
         Connection field radius of a unit in V1 to units in a LGN
         sheet.""")
@@ -136,6 +113,9 @@ class ModelSEPI(EarlyVisionModel):
         Radius of the local projections within the V1Exc sheet.""")
 
     local_size = param.Number(default=0.05, bounds=(0, None), doc="""
+        Size of the local excitatory connections within V1.""")
+
+    local_pv_size = param.Number(default=0.1, bounds=(0, None), doc="""
         Size of the local excitatory connections within V1.""")
 
     # PV connection profiles #
@@ -277,6 +257,7 @@ class ModelSEPI(EarlyVisionModel):
             learning_rate=self.locexc_lr,
             nominal_bounds_template=sheet.BoundingBox(radius=self.local_radius))
 
+
     @Model.matchconditions('V1PV', 'lateral_pv')
     def lateral_pv_conditions(self, properties):
         return {'level': 'V1Exc'}
@@ -287,7 +268,7 @@ class ModelSEPI(EarlyVisionModel):
         return Model.CFProjection.params(
             delay=0.05,
             name='LateralPV',
-            weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.local_size),
+            weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.local_pv_size),
             strength=self.latpv_strength,
             learning_rate=self.latpv_lr,
             nominal_bounds_template=sheet.BoundingBox(radius=self.local_radius))
@@ -344,44 +325,6 @@ class ModelSEPI(EarlyVisionModel):
             nominal_bounds_template=sheet.BoundingBox(radius=self.lateral_radius))
 
 
-    def training_pattern_setup(self, **overrides):
-        """
-        Only the size of Gaussian training patterns has been modified.
-        The 'aspect_ratio' and 'scale' parameter values are unchanged.
-        """
-        or_dim = 'or' in self.dims
-        gaussian = (self.dataset == 'Gaussian')
-        pattern_parameters = {'size':(0.2 if or_dim and gaussian
-                                      else 3 * 0.2 if gaussian else 10.0),
-                              'aspect_ratio': 4.66667 if or_dim else 1.0,
-                              'scale': self.contrast / 100.0}
-        return super(ModelSEPI, self).training_pattern_setup(
-            pattern_parameters=pattern_parameters,
-            position_bound_x=self.area/2.0+self.v1aff_radius,
-            position_bound_y=self.area/2.0+self.v1aff_radius)
-
-
-    def analysis_setup(self):
-        # TODO: This is different in gcal.ty, stevens/gcal.ty and gcal_od.ty
-        # And depends whether gain control is used or not
-        import topo.analysis.featureresponses
-        topo.analysis.featureresponses.FeatureMaps.selectivity_multiplier=1.0
-        topo.analysis.featureresponses.FeatureCurveCommand.contrasts=[10, 30, 70, 100]
-        if 'dr' in self.dims:
-            topo.analysis.featureresponses.MeasureResponseCommand.durations=[(max(self['lags'])+1)*1.0]
-        if 'sf' in self.dims:
-            from topo.analysis.command import measure_sine_pref
-            sf_relative_sizes = [self.sf_spacing**(sf_channel-1) for sf_channel in self['SF']]
-            wide_relative_sizes=[0.5*sf_relative_sizes[0]] + sf_relative_sizes + [2.0*sf_relative_sizes[-1]]
-            relative_sizes=(wide_relative_sizes if self.expand_sf_test_range else sf_relative_sizes)
-            #The default 1.7 spatial frequency value here is
-            #chosen because it results in a sine grating with bars whose
-            #width approximately matches the width of the Gaussian training
-            #patterns, and thus the typical width of an ON stripe in one of the
-            #receptive fields
-            measure_sine_pref.frequencies = [1.7*s for s in relative_sizes]
-
-
 
 @Model.definition
 class ModelLESPI(ModelSEPI):
@@ -396,7 +339,7 @@ class ModelLESPI(ModelSEPI):
     surround modulation effects.
     """
 
-    laterals = param.Boolean(default=True, doc="""
+    laterals_inhibitory = param.Boolean(default=True, doc="""
         Instantiate long-range lateral connections. Expensive!""")
 
     sst_timeconstant = param.Number(default=0.2, doc="""
@@ -440,7 +383,7 @@ class ModelLESPI(ModelSEPI):
 
     def sheet_setup(self):
         sheets = super(ModelLESPI,self).sheet_setup()
-        if self.laterals:
+        if self.laterals_inhibitory:
             sheets['V1Sst'] = [{}]
 
         return sheets
@@ -458,7 +401,7 @@ class ModelLESPI(ModelSEPI):
 
     @Model.matchconditions('V1Sst', 'local_sst')
     def local_sst_conditions(self, properties):
-        return {'level': 'V1Exc'} if self.laterals else {'level': None}
+        return {'level': 'V1Exc'} if self.laterals_inhibitory else {'level': None}
 
 
     @Model.CFProjection
@@ -474,7 +417,7 @@ class ModelLESPI(ModelSEPI):
 
     @Model.matchconditions('V1Sst', 'lateral_sst')
     def lateral_sst_conditions(self, properties):
-        return {'level': 'V1Exc'} if self.laterals else {'level': None}
+        return {'level': 'V1Exc'} if self.laterals_inhibitory else {'level': None}
 
 
     @Model.CFProjection
@@ -490,7 +433,7 @@ class ModelLESPI(ModelSEPI):
 
     @Model.matchconditions('V1Exc', 'sst_inhibition')
     def sst_inhibition_conditions(self, properties):
-        return {'level': 'V1Sst'} if self.laterals else {'level': 'None'}
+        return {'level': 'V1Sst'} if self.laterals_inhibitory else {'level': 'None'}
 
 
     @Model.CFProjection
