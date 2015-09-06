@@ -447,7 +447,9 @@ class RFGaborFit(param.ParameterizedFunction):
         fitvals_grid = GridSpace(None)
         for idx, ((x, y), sheet_stack) in enumerate(grid.items()):
             for key, view in sheet_stack.items():
-                processed = self._process(view, dict(grid.key_items((x, y)), **sheet_stack.key_items(key)))
+                key_dict = dict(zip([k.name for k in grid.kdims], (x, y)))
+                key_dict.update(dict([k.name for k in grid.kdims], key))
+                processed = self._process(view, key_dict)
                 if processed is None: continue
                 if (x, y) not in fit_grid:
                     fit_grid[(x, y)] = sheet_stack.clone({key: processed[0]})
