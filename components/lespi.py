@@ -339,8 +339,6 @@ class ModelLESPI(ModelSEPI):
     surround modulation effects.
     """
 
-    laterals_inhibitory = param.Boolean(default=True, doc="""
-        Instantiate long-range lateral connections. Expensive!""")
 
     sst_timeconstant = param.Number(default=0.2, doc="""
         Hysteresis time constant for Sst neurons.""")
@@ -383,8 +381,7 @@ class ModelLESPI(ModelSEPI):
 
     def sheet_setup(self):
         sheets = super(ModelLESPI,self).sheet_setup()
-        if self.laterals_inhibitory:
-            sheets['V1Sst'] = [{}]
+        sheets['V1Sst'] = [{}]
 
         return sheets
 
@@ -401,7 +398,7 @@ class ModelLESPI(ModelSEPI):
 
     @Model.matchconditions('V1Sst', 'local_sst')
     def local_sst_conditions(self, properties):
-        return {'level': 'V1Exc'} if self.laterals_inhibitory else {'level': None}
+        return {'level': 'V1Exc'}
 
 
     @Model.CFProjection
@@ -417,7 +414,7 @@ class ModelLESPI(ModelSEPI):
 
     @Model.matchconditions('V1Sst', 'lateral_sst')
     def lateral_sst_conditions(self, properties):
-        return {'level': 'V1Exc'} if self.laterals_inhibitory else {'level': None}
+        return {'level': 'V1Exc'}
 
 
     @Model.CFProjection
@@ -433,7 +430,7 @@ class ModelLESPI(ModelSEPI):
 
     @Model.matchconditions('V1Exc', 'sst_inhibition')
     def sst_inhibition_conditions(self, properties):
-        return {'level': 'V1Sst'} if self.laterals_inhibitory else {'level': 'None'}
+        return {'level': 'V1Sst'}
 
 
     @Model.CFProjection
