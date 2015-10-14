@@ -339,6 +339,8 @@ class ModelLESPI(ModelSEPI):
     surround modulation effects.
     """
 
+    sst_exponent = param.Number(default=1.5, doc="""
+        Exponent of Sst neuron activation function.""")
 
     sst_timeconstant = param.Number(default=0.2, doc="""
         Hysteresis time constant for Sst neurons.""")
@@ -392,7 +394,7 @@ class ModelLESPI(ModelSEPI):
             nominal_density=self.cortex_density,
             nominal_bounds=sheet.BoundingBox(radius=self.area/2.),
             joint_norm_fn=topo.sheet.optimized.compute_joint_norm_totals_opt,
-            output_fns=[transferfn.HalfRectifyAndPower(e=1.5),
+            output_fns=[transferfn.HalfRectifyAndPower(e=sst.sst_exponent),
                         transferfn.Hysteresis(time_constant=self.sst_timeconstant)])
 
 
