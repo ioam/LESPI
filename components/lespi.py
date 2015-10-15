@@ -394,7 +394,7 @@ class ModelLESPI(ModelSEPI):
             nominal_density=self.cortex_density,
             nominal_bounds=sheet.BoundingBox(radius=self.area/2.),
             joint_norm_fn=topo.sheet.optimized.compute_joint_norm_totals_opt,
-            output_fns=[transferfn.HalfRectifyAndPower(e=sst.sst_exponent),
+            output_fns=[transferfn.HalfRectifyAndPower(e=self.sst_exponent),
                         transferfn.Hysteresis(time_constant=self.sst_timeconstant)])
 
 
