@@ -28,6 +28,9 @@ class ModelSEPI(EarlyVisionSCAL):
         cortical areas larger than 1.0x1.0 to avoid strong suppressive
         edge effects.""")
 
+    lgn_density = param.Integer(default=16, doc="""
+        Density of the LGN sheets""")
+
     cortex_density=param.Number(default=47.0,bounds=(0,None),
         inclusive_bounds=(False,True),doc="""
         The nominal_density to use for V1.""")
@@ -69,28 +72,28 @@ class ModelSEPI(EarlyVisionSCAL):
     locexc_strength=param.Number(default=2.5, doc="""
         Local excitatory connection strength""")
 
-    latpv_strength=param.Number(default=2.0, doc="""
+    latpv_strength=param.Number(default=2.5, doc="""
         Lateral PV excitatory projection strength""")
 
     # PV projections #
 
-    pv_strength=param.Number(default=5.0, doc="""
+    pv_strength=param.Number(default=4.5, doc="""
         PV Divisive GC strength """)
 
-    recurrent_pv_strength=param.Number(default=1.0, doc="""
+    recurrent_pv_strength=param.Number(default=0.8, doc="""
         Recurrent inhibition strength in PV population""")
 
     #================#
     # Learning rates #
     #================#
 
-    aff_lr=param.Number(default=0.2,bounds=(0.0,None),doc="""
+    aff_lr=param.Number(default=0.25,bounds=(0.0,None),doc="""
         Learning rate for the afferent projection(s) to V1.""")
 
     locexc_lr=param.Number(default=0.0, doc="""
         Local excitatory connection strength""")
 
-    latpv_lr=param.Number(default=0.0, doc="""
+    latpv_lr=param.Number(default=0.25, doc="""
         Lateral PV excitatory projection strength""")
 
     pv_lr=param.Number(default=0.25, doc="""
@@ -112,7 +115,7 @@ class ModelSEPI(EarlyVisionSCAL):
     local_radius = param.Number(default=0.14, bounds=(0, None), doc="""
         Radius of the local projections within the V1Exc sheet.""")
 
-    local_size = param.Number(default=0.05, bounds=(0, None), doc="""
+    local_size = param.Number(default=0.06, bounds=(0, None), doc="""
         Size of the local excitatory connections within V1.""")
 
     local_pv_size = param.Number(default=0.1, bounds=(0, None), doc="""
