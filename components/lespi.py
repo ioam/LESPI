@@ -61,10 +61,10 @@ class ModelSEPI(EarlyVisionSCAL):
 
     # Afferent Inputs #
 
-    lgn2exc_str=param.Number(default=2.0, doc="""
+    lgn2exc_str=param.Number(default=3.0, doc="""
         Thalamocortical afferent strength""")
 
-    lgn2pv_str=param.Number(default=1.33, doc="""
+    lgn2pv_str=param.Number(default=2, doc="""
         Thalamocortical afferent strength""")
 
     # Excitatory Projections #
