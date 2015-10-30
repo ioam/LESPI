@@ -118,7 +118,7 @@ class ModelSEPI(EarlyVisionSCAL):
     local_size = param.Number(default=0.06, bounds=(0, None), doc="""
         Size of the local excitatory connections within V1.""")
 
-    local_pv_size = param.Number(default=0.1, bounds=(0, None), doc="""
+    local_pv_size = param.Number(default=0.06, bounds=(0, None), doc="""
         Size of the local excitatory connections within V1.""")
 
     # PV connection profiles #
