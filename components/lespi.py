@@ -11,7 +11,7 @@ from topo.submodel.earlyvision import EarlyVisionModel
 from topo.submodel.scal import EarlyVisionSCAL
 from topo.submodel import Model
 
-from . import MultiplyWithConstant
+from . import MultiplyWithConstant, CircularMask
 
 @Model.definition
 class ModelSEPI(EarlyVisionSCAL):
@@ -23,6 +23,10 @@ class ModelSEPI(EarlyVisionSCAL):
         SCAL and other spatially calibrated variants of GCAL require
         cortical areas larger than 1.0x1.0 to avoid strong suppressive
         edge effects.""")
+
+    circular_mask = param.Boolean(default=True, doc="""
+        Whether to apply a circular mask to V1 sheets to avoid edge
+        effects.""")
 
     lgn_density = param.Integer(default=16, doc="""
         Density of the LGN sheets""")
@@ -182,6 +186,7 @@ class ModelSEPI(EarlyVisionSCAL):
         return Model.SettlingCFSheet.params(
             precedence=0.6,
             nominal_density=self.cortex_density,
+            mask=CircularMask() if self.circular_mask else SheetMask(),
             nominal_bounds=sheet.BoundingBox(radius=self.area/2.),
             joint_norm_fn=optimized.compute_joint_norm_totals_cython,
             output_fns=[transferfn.misc.HomeostaticResponse(t_init=self.t_init, target_activity=self.target_activity,
@@ -193,6 +198,7 @@ class ModelSEPI(EarlyVisionSCAL):
             precedence=0.7,
             nominal_density=self.cortex_density,
             nominal_bounds=sheet.BoundingBox(radius=self.area/2.),
+            mask=CircularMask() if self.circular_mask else SheetMask(),
             measure_maps=False,
             joint_norm_fn=optimized.compute_joint_norm_totals_cython,
             output_fns=[transferfn.HalfRectifyAndPower(e=self.pv_exponent),
@@ -392,6 +398,7 @@ class ModelLESPI(ModelSEPI):
     def V1Sst(self, properties):
         return Model.SettlingCFSheet.params(
             precedence=0.8,
+            mask=CircularMask() if self.circular_mask else SheetMask(),
             nominal_density=self.cortex_density,
             nominal_bounds=sheet.BoundingBox(radius=self.area/2.),
             joint_norm_fn=optimized.compute_joint_norm_totals_cython,

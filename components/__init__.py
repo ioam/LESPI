@@ -11,6 +11,7 @@ from imagen.random import UniformRandom
 import topo
 from topo.base.simulation import EPConnectionEvent
 from topo.sheet import JointNormalizingCFSheet_Continuous
+from topo.base.projection import SheetMask
 from topo.submodel import Model
 
 class MultiPortSheet(JointNormalizingCFSheet_Continuous):
@@ -192,6 +193,27 @@ class MultiplyWithConstant(param.Parameterized):
     def __call__(self, x, y):
         return np.multiply(x, np.maximum(y+self.c, 0))
 
+
+class CircularMask(SheetMask):
+
+    @property
+    def sheet(self):
+        return self._sheet
+
+    @sheet.setter
+    def sheet(self, sheet):
+        self._sheet = sheet
+        if sheet is not None:
+            l, b, r, t = sheet.bounds.lbrt()
+            self.data = Disk(smoothing=0, xdensity=sheet.xdensity,
+                             ydensity=sheet.ydensity, size=t-b,
+                             bounds=sheet.bounds)[:].data
+
+    def reset(self):
+        pass
+
+    def calculate(self):
+        pass
 
 
 class SynapticScaling(TransferFnWithState):
