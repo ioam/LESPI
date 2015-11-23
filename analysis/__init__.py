@@ -635,7 +635,7 @@ class ComplexityAnalysis(ParameterizedFunction):
                                              value_dimensions=[Dimension('Modulation Ratio',
                                                                          range=(0, 2))])
                 row, col = phase_image.sheet2matrixidx(x, y)
-                ydata = curve.data[:, 1]
+                ydata = curve.dimension_values(1)
                 fft = np.fft.fft(list(ydata) * p.fft_sampling)
                 dc_value = abs(fft[0])
                 if dc_value != 0:
@@ -650,8 +650,8 @@ class ComplexityAnalysis(ParameterizedFunction):
 class response_latency(ElementOperation):
 
     def _process(self, view, key=None):
-        xvals = view.data[:, 0]
-        yvals = view.data[:, 1]
+        xvals = view.dimension_values(0)
+        yvals = view.dimension_values(1)
 
         if np.sum(yvals) == 0:
             peak_duration = np.NaN
