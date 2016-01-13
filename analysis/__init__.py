@@ -436,6 +436,8 @@ class RFGaborFit(param.ParameterizedFunction):
             result = np.ones(x.shape).ravel() * 10000
         except FloatingPointError:
             result = np.ones(x.shape).ravel() * 10000
+        except AttributeError:
+            print x, y
         return result
 
     def __call__(self, grid, **params):
@@ -448,7 +450,7 @@ class RFGaborFit(param.ParameterizedFunction):
         for idx, ((x, y), sheet_stack) in enumerate(grid.items()):
             for key, view in sheet_stack.items():
                 key_dict = dict(zip([k.name for k in grid.kdims], (x, y)))
-                key_dict.update(dict(zip([k.name for k in grid.kdims], key)))
+                key_dict.update(dict(zip([k.name for k in sheet_stack.kdims], key)))
                 processed = self._process(view, key_dict)
                 if processed is None: continue
                 if (x, y) not in fit_grid:
