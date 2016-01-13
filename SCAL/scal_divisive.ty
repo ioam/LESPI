@@ -4,3 +4,12 @@ SCAL
 import topo
 from topo.submodel.scal import ModelSCAL
 topo.sim.model = ModelSCAL()
+topo.sim.model()
+
+from topo.base.simulation import EPConnectionEvent
+
+def clear_fn():
+    topo.sim.events[:] = [e for e in topo.sim.events
+                          if not (isinstance(e, EPConnectionEvent) and e.conn == topo.sim.V1.projections().get('LRExcitatory'))]
+
+topo.sim.V1.end_of_iteration.append(clear_fn)
