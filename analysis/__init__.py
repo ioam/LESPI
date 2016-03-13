@@ -16,6 +16,7 @@ from holoviews.ipython.widgets import ProgressBar
 from holoviews.interface.collector import Layout
 from holoviews.interface.seaborn import DFrame
 from holoviews.operation import MapOperation, ElementOperation, transform
+from holoviews.operation.normalization import raster_normalization
 
 import imagen as ig
 from imagen import Composite, RawRectangle
@@ -31,25 +32,10 @@ import featuremapper.features as f
 
 import topo
 
-class similarity_analysis(MapOperation):
 
-    def _process(self, ormaps, key=None):
-        ordata = ormaps * ormaps.last
-        return transform(cyclic_difference(ordata), operator=lambda x: 1-2*x)
-
-
-class SheetReductionCurve(MapOperation):
-    """
-    Takes in a Stack of SheetViews, reduces them using the provided
-    reduce_fn and collates them across the provided dimension.
-    """
-
-    dimension = param.String(default='Time')
-
-    reduce_fn = param.Callable(default=np.mean)
-
-    def _process(self, view):
-        return [view.reduce(x=self.p.reduce_fn, y=self.p.reduce_fn).collate(self.p.dimension, 'Response')]
+def similarity_analysis(hmap):
+    return transform(cyclic_difference(raster_normalization(hmap*hmap.last)),
+                     operator=lambda x: 1.0-(2.0*x))
 
 
 # Filter out units with OR prefs significantly different from the measured location
