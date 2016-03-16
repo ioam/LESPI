@@ -1,9 +1,11 @@
 from collections import defaultdict
+from functools import partial
 
 import numpy as np
 import pandas
 from scipy.optimize import curve_fit
 import scipy.special as ss
+from scipy.ndimage import gaussian_filter
 
 import param
 from param import ParameterizedFunction, ParamOverrides
@@ -17,6 +19,7 @@ from holoviews.interface.collector import Layout
 from holoviews.interface.seaborn import DFrame
 from holoviews.operation import MapOperation, ElementOperation, transform
 from holoviews.operation.normalization import raster_normalization
+from holoviews.ipython.widgets import ProgressBar
 
 import imagen as ig
 from imagen import Composite, RawRectangle
@@ -407,77 +410,104 @@ class RFGaborFit(param.ParameterizedFunction):
 
     roi_radius = param.Number(default=None, allow_None=True)
 
-    init_fit = param.NumericTuple(default=(1.0, 1.7, 0.1, 0.2, 0, 0))
+    init_fit = param.NumericTuple(default=(1.0, 1.7, 0.1, 0.2, 0))
 
     def _validate_rf(self, rf):
         if not isinstance(rf, Image):
             raise Exception('Supplied views need to be curves.')
 
-    def _function(self, (x, y), A=1.0, f=1.7, sig_x=0.1, sig_y=0.2, phase=0, theta=0):
+    @classmethod
+    def _function(self, (xs, ys, x0, y0), A=1.0, f=1.7, sig_x=0.1, sig_y=0.2, phase=0, theta=0):
+        if any(v < 0 or v > 10 for v in [f, sig_x, sig_y]):
+            return 10000000000000000000
         try:
-            x = (x-self.x0) * np.cos(theta) + (y+self.y0)*np.sin(theta)
-            y = -(x-self.x0) * np.sin(theta) + (y+self.y0)*np.cos(theta)
-            result = (A * np.exp(-(x/np.sqrt(2*sig_x))**2 - (y/np.sqrt(2*sig_y))**2) * np.cos(2*np.pi*f*x + phase)).ravel()
+            theta -= np.pi/2.
+            theta = -theta
+            y = np.subtract.outer(np.cos(theta)*ys, np.sin(theta)*xs)
+            x = np.add.outer(np.sin(theta)*ys, np.cos(theta)*xs)
+            x_w = np.divide(x, sig_x)
+            y_h = np.divide(y, sig_y)
+            p = np.exp(-0.5*x_w*x_w + -0.5*y_h*y_h)
+            result = (A * p * np.cos(2*np.pi*f*x + phase))
+            result = result.ravel()
         except RuntimeError:
-            result = np.ones(x.shape).ravel() * 10000
+            result = np.ones(x.shape).ravel() * 10e6
         except FloatingPointError:
-            result = np.ones(x.shape).ravel() * 10000
+            result = np.ones(x.shape).ravel() * 10e6
         except AttributeError:
             print x, y
         return result
 
-    def __call__(self, grid, **params):
+    def __call__(self, grid, orpreference, **params):
         self.p = param.ParamOverrides(self, params, allow_extra_keywords=True)
         results = Layout()
+        normed_grid = {}
+        fit_grid = {}
+        residual_grid = {}
+        fitvals_grid = {}
 
-        fit_grid = grid.clone()
-        residual_grid = grid.clone()
-        fitvals_grid = GridSpace(None)
-        for idx, ((x, y), sheet_stack) in enumerate(grid.items()):
+        progress = ProgressBar()
+        progress(0)
+
+        grid_items = grid.items()
+        grid_length = len(grid_items)
+        for idx, ((x, y), sheet_stack) in enumerate(grid_items):
             for key, view in sheet_stack.items():
                 key_dict = dict(zip([k.name for k in grid.kdims], (x, y)))
                 key_dict.update(dict(zip([k.name for k in sheet_stack.kdims], key)))
-                processed = self._process(view, key_dict)
+                key_dict.pop('Duration', None)
+                theta = orpreference.select(**key_dict).last[x, y]
+                processed = self._process(view, theta, key_dict)
                 if processed is None: continue
                 if (x, y) not in fit_grid:
-                    fit_grid[(x, y)] = sheet_stack.clone({key: processed[0]})
-                    residual_grid[(x, y)] = sheet_stack.clone({key: processed[1]})
-                    fitvals_grid[(x, y)] = HoloMap({key: processed[2]}, key_dimensions=sheet_stack.key_dimensions)
+                    normed_grid[(x, y)] = sheet_stack.clone({key: processed[0]})
+                    fit_grid[(x, y)] = sheet_stack.clone({key: processed[1]})
+                    residual_grid[(x, y)] = sheet_stack.clone({key: processed[2]})
+                    fitvals_grid[(x, y)] = HoloMap({key: processed[3]}, kdims=sheet_stack.kdims)
                 else:
-                    fit_grid[(x, y)][key] = processed[0]
-                    residual_grid[(x, y)][key] = processed[1]
-                    fitvals_grid[(x, y)][key] = processed[2]
-        results.set_path(('RFGaborFit', 'RF_Fit'), fit_grid)
-        results.set_path(('RFGaborFit', 'RF_Residuals'), residual_grid)
-        results.set_path(('RFGaborFit', 'RF_Fit_Values'), fitvals_grid)
+                    normed_grid[(x, y)][key] = processed[0]
+                    fit_grid[(x, y)][key] = processed[1]
+                    residual_grid[(x, y)][key] = processed[2]
+                    fitvals_grid[(x, y)][key] = processed[3]
+            progress(((idx+1)/float(grid_length))*100)
+        results.set_path(('RFGaborFit', 'RF_Fit'), grid.clone(fit_grid))
+        results.set_path(('RFGaborFit', 'RF_Normed'), grid.clone(normed_grid))
+        results.set_path(('RFGaborFit', 'RF_Residuals'), grid.clone(residual_grid))
+        results.set_path(('RFGaborFit', 'RF_Fit_Values'), GridSpace(fitvals_grid))
         return results
 
-    def _process(self, rf, key=None):
+    def _process(self, rf, theta, key=None):
         if hasattr(rf, 'situated'):
             rf = rf.situated
         self._validate_rf(rf)
 
         x, y = key['X'], key['Y']
-        self.x0, self.y0 = x, y
         l, b, r, t = rf.lbrt
         if self.p.roi_radius:
             off = self.p.roi_radius
             rf = rf[x-off:x+off, y-off:y+off]
-        data = rf.data - rf.data.mean()
-        rows, cols = data.shape
+            l, b, r, t = -off, -off, off, off
+            x, y = 0, 0
+        
+        normed = gaussian_filter(rf.data, 1)
+        data = normed - normed.mean()
 
+        rows, cols = data.shape
         xs, ys = np.linspace(l, r, cols), np.linspace(b, t, rows)
-        xs, ys = np.meshgrid(xs, ys)
         try:
-            fit, pcov = curve_fit(self._function, (xs, ys), data.ravel(), self.p.init_fit, maxfev=self.max_iterations)
+            fit, pcov = curve_fit(self._function, (xs, ys, x, y), data.ravel(),
+                                  self.p.init_fit+(theta,), maxfev=self.max_iterations)
         except RuntimeError:
             return None
-        fit_data = self._function((xs, ys), *fit).reshape(rows, cols)
+        fit_data = self._function((xs, ys, x, y), *fit).reshape(rows, cols)
         nx, ny= (fit[1] * fit[2], fit[1] * fit[3])
         residual = data - fit_data
-        fit_table = Table(dict(zip(['A', 'f', 'sig_x', 'sig_y', 'phase','theta'], fit), **{'nx':nx, 'ny': ny, 'residual': np.sum(np.abs(residual))}))
+        fit_table = Table(tuple(fit)+(theta, nx, ny, np.sum(np.abs(residual))),
+                          vdims=['A', 'f', 'sig_x', 'sig_y', 'phase', 'theta',
+                                 'real_theta', 'nx', 'ny', 'residual'])
 
-        return [rf.clone(fit_data), rf.clone(residual, label='Residual'), fit_table]
+        return [rf.clone(data), rf.clone(fit_data),
+                rf.clone(residual, label='Residual'), fit_table]
 
 
 def vonMises(phi, k, mu):
