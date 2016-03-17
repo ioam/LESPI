@@ -3,6 +3,7 @@ from functools import partial
 
 import numpy as np
 import pandas
+import scipy
 from scipy.optimize import curve_fit
 import scipy.special as ss
 from scipy.ndimage import gaussian_filter
@@ -510,14 +511,13 @@ class RFGaborFit(param.ParameterizedFunction):
                 rf.clone(residual, label='Residual'), fit_table]
 
 
-def vonMises(phi, k, mu):
+def vonMises_fn(phi, k, mu):
     """
     The vonMises function generates a weighting for different
     cyclic quantities phi from a vonMises distribution centered
     around mu with a kernel width k.
     """
     return (1/(2*np.pi*ss.i0(k))) * np.e**(k*np.cos(2*(phi-mu)))
-
 
 
 class CFvonMisesFit(param.ParameterizedFunction):
@@ -544,7 +544,8 @@ class CFvonMisesFit(param.ParameterizedFunction):
 
     roi_radius = param.Number(default=None, allow_None=True)
 
-    def _function(self, orpref, k, mu1, mu2, weight=0, x=0, y=0, aspect=1, ravelled=True):
+    def _function(self, orpref, k, mu1, mu2, weight=0, x=0, y=0, aspect=1,
+                  ravelled=True, vonMises=True):
         l, b, r, t = orpref.bounds.lbrt()
         if k < 0 or mu1 < 0 or mu2 < 0 or x > r or x < l or y > t or y < b:
             return np.ones(orpref.data.shape).ravel()*10**6
@@ -552,11 +553,14 @@ class CFvonMisesFit(param.ParameterizedFunction):
                        size=self.p.lateral_size, bounds=orpref.bounds)()
         gaussian = ig.Gaussian(x=x, y=y, xdensity=orpref.xdensity, ydensity=orpref.ydensity,
                                orientation=orpref[x, y], aspect_ratio=aspect, mask=mask,
-                               size=mu1, bounds=orpref.bounds)
-        fit = vonMises(orpref.data, k, orpref[x, y]) * gaussian()
+                               size=mu1*2., bounds=orpref.bounds)
+        fit = gaussian() * weight
+        if vonMises:
+            fit *= vonMises_fn(orpref.data, k, orpref[x, y])
         gaussian2 = ig.Gaussian(x=x, y=y, xdensity=orpref.xdensity, ydensity=orpref.ydensity,
-                                mask=mask, size=mu2, bounds=orpref.bounds)
-        fit += gaussian2() * weight
+                                mask=mask, size=mu2*2., bounds=orpref.bounds, aspect_ratio=1)
+        fit += gaussian2()
+        fit[fit < np.percentile(fit[fit.nonzero()], self.p.threshold)] = 0
         DivisiveNormalizeL1()(fit)
         if ravelled:
             fit = fit.ravel()
@@ -565,48 +569,95 @@ class CFvonMisesFit(param.ParameterizedFunction):
 
     def __call__(self, tree, **params):
         self.p = param.ParamOverrides(self, params, allow_extra_keywords=True)
-
         grid = tree.CFs[self.p.projection]
-        orpref = tree.OrientationPreference[self.p.sheet]
+        orpreference = tree.OrientationPreference[self.p.sheet]
 
+        # Initialize Progress Bar
+        progress = ProgressBar()
+        progress(0)
+        grid_length = len(grid.keys())
+
+        # Initialize datastructures
         results = Layout()
-        vdims = ['k', 'mu1', 'mu2', 'weight', 'xfit', 'yfit']
-        if self.p.fit_aspect:
-            vdims += 'aspect'
-        lateral_fits = hv.Table(kdims=['x', 'y']+grid.values()[0].kdims,
-                                vdims=vdims)
+        lat_grid = hv.GridSpace()
         fit_grid = hv.GridSpace()
-        residual_grid = hv.GridSpace()
+        naive_grid = hv.GridSpace()
+        error_grid = hv.GridSpace()
+        naive_error = hv.GridSpace()
+        naive_error_grid = hv.GridSpace()
+        map_dims = grid.values()[0].kdims
+        fit_tables = hv.HoloMap(kdims=['x', 'y']+map_dims)
+        map_dims = [d.name for d in map_dims]
         for idx, ((x, y), sheet_stack) in enumerate(grid.items()):
             for key, view in sheet_stack.items():
-                processed = self._process(view, orpref[key], (x, y))
-                fit, fit_lateral, error = processed
+                orpref = orpreference.select(**dict(zip(map_dims, key)))
+                if isinstance(orpref, HoloMap):
+                    orpref = orpref.last
+                processed = self._process(view, orpref, (x, y))
+                data, fit, fit_lateral, naive_lateral, error, naive_error = processed
+                fit_tables[(x, y)+key] = fit
                 if (x, y) not in fit_grid:
+                    lat_grid[(x, y)] = sheet_stack.clone({key: data})
                     fit_grid[(x, y)] = sheet_stack.clone({key: fit_lateral})
-                    residual_grid[(x, y)] = sheet_stack.clone({key: error})
-                lateral_fits[(x, y) + key] = tuple(fit)
-                fit_grid[x, y] = fit_lateral
-                residual_grid[x, y] = error
+                    naive_grid[(x, y)] = sheet_stack.clone({key: naive_lateral})
+                    error_grid[(x, y)] = sheet_stack.clone({key: error})
+                    naive_error_grid[(x, y)] = sheet_stack.clone({key: naive_error})
+                else:
+                    lat_grid[x, y][key] = data
+                    fit_grid[x, y][key] = fit_lateral
+                    naive_grid[x, y][key] = naive_lateral
+                    error_grid[x, y][key] = error
+                    naive_error_grid[x, y][key] = naive_error
+            progress(((idx+1)/float(grid_length))*100)
 
-        results.set_path(('vonMisesFit', 'RF_Fit'), fit_grid)
-        results.set_path(('vonMisesFit', 'RF_Residuals'), residual_grid)
-        results.set_path(('vonMisesFit', 'Fit_Results'), lateral_fits)
+        results.set_path(('Preprocessed', 'CFs'), lat_grid)
+        results.set_path(('NaiveFit', 'CFs'), naive_grid)
+        results.set_path(('vonMisesFit', 'CFs'), fit_grid)
+        results.set_path(('vonMisesFit', 'Error'), error_grid)
+        results.set_path(('NaiveFit', 'Error'), naive_error_grid)
+        results.set_path(('Results', 'Table'), fit_tables)
         return results
-
 
     def _process(self, cf, orpref, key=None):
         x, y = key
-        lat_data = cf.last.situated.data.copy()
+        lat_data = cf.situated.data.copy()
         lat_data[lat_data < np.percentile(lat_data[lat_data.nonzero()], self.p.threshold)] = 0
         DivisiveNormalizeL1()(lat_data)
+        lateral_cf = cf.situated.clone(lat_data)
         initial = (1, 1, 0.1, 1, x, y)
+
+        vdims = ['MSE', hv.Dimension((r'$r^2$', 'r2')), 'k',
+                 'mu1', 'mu2', 'weight', 'xfit', 'yfit']
         if self.p.fit_aspect:
+            vdims += ['aspect']
             initial += (1,)
-        fit, _ = curve_fit(self._function, orpref.last, lat_data.ravel(), p0=initial)
-        fit_lateral = hv.Image(self._function(orpref.last, *fit, ravelled=False),
-                               bounds=orpref.bounds)
-        error = fit_lateral.clone(lat_data-fit_lateral.data, group='vonMises Error')
-        return [fit, fit_lateral, error]
+
+        # Fit naive and vonMises model
+        naive_function = partial(self._function, vonMises=False)
+        naive_fit, _ = curve_fit(naive_function, orpref,
+                                 lat_data.ravel(), p0=initial)
+        fit, _ = curve_fit(self._function, orpref, lat_data.ravel(), p0=initial)
+
+        # Get fitted data and compute error
+        observed_mean = lat_data.mean()
+        fit_data = self._function(orpref, *fit, ravelled=False)
+        naive_data = naive_function(orpref, *fit, ravelled=False)
+        error = (lat_data-fit_data)
+        naive_error = (lat_data-naive_data)
+        sum_of_squares = ((lat_data-observed_mean)**2).sum()
+        rsquared = 1 - (error**2).sum()/sum_of_squares
+        rsquared_naive = 1 - (naive_error**2).sum()/sum_of_squares
+        fit_results = [('Naive', (naive_error**2).mean(), rsquared_naive) + tuple(naive_fit),
+                       ('vonMises', (error**2).mean(), rsquared) + tuple(fit)]
+
+        # Wrap data in HoloViews objects
+        fit_lateral = hv.Image(fit_data, bounds=orpref.bounds)
+        naive_lateral = hv.Image(naive_data, bounds=orpref.bounds)
+        error = fit_lateral.clone(error, group='vonMises Error', vdims=['Square Error'])
+        naive_error = fit_lateral.clone(naive_error, group='vonMises Error',
+                                        vdims=['Square Error'])
+        fit_table = hv.Table(fit_results, kdims=['Model'], vdims=vdims)
+        return [lateral_cf, fit_table, fit_lateral, naive_lateral, error, naive_error]
 
 
 
