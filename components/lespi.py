@@ -6,12 +6,13 @@ import imagen
 
 import topo
 from topo.base.arrayutil import DivideWithConstant
+from topo.base.projection import CircularMask
 from topo import learningfn, projection, responsefn, sheet, transferfn, optimized
 from topo.submodel.earlyvision import EarlyVisionModel
 from topo.submodel.scal import EarlyVisionSCAL
 from topo.submodel import Model
 
-from . import MultiplyWithConstant, CircularMask
+from . import MultiplyWithConstant
 
 @Model.definition
 class ModelSEPI(EarlyVisionSCAL):
