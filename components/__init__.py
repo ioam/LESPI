@@ -12,7 +12,7 @@ import topo
 from topo.base.simulation import EPConnectionEvent
 from topo.sheet import JointNormalizingCFSheet_Continuous
 from topo.base.projection import SheetMask
-from topo.submodel import Model
+from topo.submodel import Model, register_submodel_decorators
 
 class MultiPortSheet(JointNormalizingCFSheet_Continuous):
     """
@@ -116,7 +116,7 @@ class MultiPortSheet(JointNormalizingCFSheet_Continuous):
                 conn.delay) + self.simulation.time(), conn, data)
             self.simulation.enqueue_event(e)
 
-Model.register_decorator(MultiPortSheet)
+register_submodel_decorators(MultiPortSheet)
 
 class GaussianBinaryDisk(Composite):
 
