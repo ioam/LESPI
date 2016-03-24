@@ -254,7 +254,7 @@ class measure_iso_suppression(UnitMeasurements):
 
     frequency = param.Number(default=1.65)
 
-    num_orientation = param.Integer(default=9)
+    num_orientation = param.Integer(default=10)
 
     max_ordiff = param.Number(default=np.pi/8)
 
@@ -303,10 +303,9 @@ class measure_iso_suppression(UnitMeasurements):
 
         # Stack the Size Tuning Data
         orcs_df = pandas.concat(orcs_dataframes)
-        orcs_stack = HoloMap(None, key_dimensions=['Time', 'ContrastSurround'])
-        for k, cdf in orcs_df.groupby(['ContrastSurround']):
-            cdf = cdf.filter(['OCSI'])
-            orcs_stack[(topo.sim.time(), k)] = DFrame(cdf, label='Orientation Contrast Analysis')
+        orcs_table = Table(orcs_df, vdims=['OCSI', 'Orientation Preference'],
+                           label='Orientation Contrast Analysis')
+        orcs_stack = HoloMap({topo.sim.time(): orcs_table}, key_dimensions=['Time'])
         results.set_path(('OCSI_Analysis', p.output), orcs_stack)
 
         return results
