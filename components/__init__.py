@@ -116,7 +116,7 @@ class MultiPortSheet(JointNormalizingCFSheet_Continuous):
                 conn.delay) + self.simulation.time(), conn, data)
             self.simulation.enqueue_event(e)
 
-register_submodel_decorators(MultiPortSheet)
+register_submodel_decorators([MultiPortSheet])
 
 class GaussianBinaryDisk(Composite):
 
