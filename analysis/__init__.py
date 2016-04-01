@@ -238,10 +238,10 @@ class measure_iso_suppression(UnitMeasurements):
     sizecenter = param.Number(default=1.0, bounds=(0, None), doc="""
         The size of the central pattern to present.""")
 
-    sizesurround = param.Number(default=3.0, bounds=(0, None), doc="""
+    sizesurround = param.Number(default=3.5, bounds=(0, None), doc="""
         The size of the surround pattern to present.""")
 
-    thickness = param.Number(default=2.0, bounds=(0, None), softbounds=(0, 1.5),
+    thickness = param.Number(default=2.0, bounds=(0, None),
                              doc="""Ring thickness.""")
 
     contrastsurround = param.List(default=[30, 100],
@@ -272,6 +272,8 @@ class measure_iso_suppression(UnitMeasurements):
                                   contrastsurround=p.contrastsurround,
                                   contrastcenter=p.contrastcenter,
                                   thickness=p.thickness,
+                                  sizecenter=p.sizecenter,
+                                  sizesurround=p.sizesurround,
                                   num_orientation=p.num_orientation)
         results = Layout()
         for coord in coords:
