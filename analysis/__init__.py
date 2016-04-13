@@ -594,7 +594,10 @@ class CFvonMisesFit(param.ParameterizedFunction):
                 orpref = orpreference.select(**dict(zip(map_dims, key)))
                 if isinstance(orpref, HoloMap):
                     orpref = orpref.last
-                processed = self._process(view, orpref, (x, y))
+                try:
+                    processed = self._process(view, orpref, (x, y))
+                except RuntimeError:
+                    continue
                 data, fit, fit_lateral, naive_lateral, error, naive_error = processed
                 fit_tables[(x, y)+key] = fit
                 if (x, y) not in fit_grid:
