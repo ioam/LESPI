@@ -247,8 +247,8 @@ class measure_iso_suppression(UnitMeasurements):
     contrastsurround = param.List(default=[30, 100],
                                   doc="Contrast of the surround.")
 
-    contrastcenter = param.Number(default=100, bounds=(0, 100),
-                                  doc="""Contrast of the center.""")
+    contrastcenter = param.List(default=[10, 70],
+                                doc="""Contrast of the center.""")
 
     output = param.String(default='V1')
 
@@ -270,13 +270,15 @@ class measure_iso_suppression(UnitMeasurements):
 
         measurement_params = dict(frequencies=[p.frequency], outputs=[p.output],
                                   contrastsurround=p.contrastsurround,
-                                  contrastcenter=p.contrastcenter,
                                   thickness=p.thickness,
                                   sizecenter=p.sizecenter,
                                   sizesurround=p.sizesurround,
                                   num_orientation=p.num_orientation)
+        center_dim = Dimension('ContrastCenter')
+
         results = Layout()
-        for coord in coords:
+        for coord, c in product(coords, p.contrastcenter):
+            measurement_params['contrastcenter'] = c
             data = measure_orientation_contrast(coords=[coord], **measurement_params)
 
             # Compute relative offsets from the measured coordinate
@@ -285,6 +287,7 @@ class measure_iso_suppression(UnitMeasurements):
             orcs = data.OrientationsurroundTuning[p.output].sample((cols, rows), bounds=lbrt).to.curve('OrientationSurround', 'Response')
             orcs_data = OrientationContrastAnalysis(orcs)
             orcs_df = orcs_data.dframe()
+            orcs_df['ContrastCenter'] = c
 
             # Filter out values with significantly different OR preferences
             ref_orpref = orpref.last[coord]
@@ -298,6 +301,7 @@ class measure_iso_suppression(UnitMeasurements):
             # Add Size Response to results
             path = ('OrientationContrastResponse', p.output)
             orcs_response = data.OrientationsurroundTuning[p.output]
+            orcs_response.add_dimension(center_dim, 0, c)
             if path in results:
                 results.OrientationContrastResponse[p.output].update(orcs_response)
             else:
