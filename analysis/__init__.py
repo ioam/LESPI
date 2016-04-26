@@ -1,4 +1,5 @@
 from collections import defaultdict
+from itertools import product
 from functools import partial
 
 import numpy as np
@@ -244,7 +245,7 @@ class measure_iso_suppression(UnitMeasurements):
     thickness = param.Number(default=2.0, bounds=(0, None),
                              doc="""Ring thickness.""")
 
-    contrastsurround = param.List(default=[30, 100],
+    contrastsurround = param.List(default=[0, 30, 100],
                                   doc="Contrast of the surround.")
 
     contrastcenter = param.List(default=[10, 70],
