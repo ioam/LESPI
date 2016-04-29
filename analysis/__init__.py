@@ -302,7 +302,7 @@ class measure_iso_suppression(UnitMeasurements):
             # Add Size Response to results
             path = ('OrientationContrastResponse', p.output)
             orcs_response = data.OrientationsurroundTuning[p.output]
-            orcs_response.add_dimension(center_dim, 0, c)
+            orcs_response = orcs_response.add_dimension(center_dim, 0, c)
             if path in results:
                 results.OrientationContrastResponse[p.output].update(orcs_response)
             else:
