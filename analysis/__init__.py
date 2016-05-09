@@ -27,7 +27,13 @@ import imagen as ig
 from imagen import Composite, RawRectangle
 from imagen.transferfn import DivisiveNormalizeL1
 
-from featuremapper.analysis import cyclic_difference
+try:
+    from numba import jit
+except ImportError:
+    def jit(func):
+        return func
+
+from featuremapper.analysis import cyclic_difference, center_cyclic
 from featuremapper.analysis.spatialtuning import SizeTuningPeaks, SizeTuningShift,\
     OrientationContrastAnalysis, FrequencyTuningAnalysis
 from featuremapper.command import FeatureCurveCommand, DistributionStatisticFn, \
@@ -36,6 +42,17 @@ from featuremapper.command import FeatureCurveCommand, DistributionStatisticFn, 
 import featuremapper.features as f
 
 import topo
+
+
+@jit
+def lhi_inner(or_map, sigma, sx, sy):
+    lhi1, lhi2 = 0., 0.
+    (xsize,ysize) = or_map.shape
+    for tx in xrange(0,xsize):
+        for ty in xrange(0,ysize):
+            lhi1+=np.exp(-((sx-tx)*(sx-tx)+(sy-ty)*(sy-ty))/(2*sigma**2))*np.cos(2*or_map[tx,ty])
+            lhi2+=np.exp(-((sx-tx)*(sx-tx)+(sy-ty)*(sy-ty))/(2*sigma**2))*np.sin(2*or_map[tx,ty])
+    return lhi1, lhi2
 
 
 def similarity_analysis(hmap):
@@ -58,6 +75,48 @@ def filter_unitorpref(df, orpref_stack, max_diff=np.pi/8):
         if ordiff < max_diff:
             rows.append(row)
     return pandas.DataFrame(rows, None, df.columns)
+
+
+class LocalHomogeneityIndex(ElementOperation):
+
+    sigma = param.Number(default=0.07)
+
+    def lhi(self, or_map, sigma):
+        (xsize,ysize) = or_map.shape
+        lhi = np.zeros(or_map.shape)
+        for sx in xrange(0,xsize):
+            for sy in xrange(0,ysize):
+                lhi_current = lhi_inner(or_map, sigma, sx, sy)
+                lhi[sx,sy]=np.sqrt(lhi_current[0]**2 + lhi_current[1]**2)/(2*np.pi*sigma**2)
+        return lhi
+
+    def _process(self, ormap, key=None):
+        or_map = ormap.data
+        sigma = int(self.p.sigma * ormap.xdensity)
+        lhi = self.lhi(or_map, sigma)
+        return ormap.clone(lhi.copy(), group='Local Homogeneity Index', vdims=['LHI'])
+
+
+# Define model function to be used to fit to the data above:
+def gauss(x, *p):
+    A, mu, sigma = p
+    return A*np.exp(-(x-mu)**2/(2.*sigma**2))
+
+class TuningWidth(ElementOperation):
+
+    def _process(self, curves, key=None):
+        centered = {k: center_cyclic(v) for k, v in curves.items()}
+        xs = centered.values()[0].dimension_values(0)
+        p0 = [1., 0., 1.]
+        dims = ['Amplitude', '$\mu$', '$\sigma$', 'Bandwidth']
+        fits, fitted_curves = [], []
+        for k, curve in centered.items():
+            ys = curve.dimension_values(1)
+            coeff, var_matrix = curve_fit(gauss, xs, ys, p0=p0, maxfev=10000)
+            bw = np.rad2deg(coeff[-1]*2*np.sqrt(2*np.log(2)))/2
+            fits.append((k, ItemTable(zip(dims, list(coeff)+[bw]))))
+            fitted_curves.append((k, curve.clone((xs, gauss(xs, *coeff)))))
+        return curves.clone(fitted_curves)() + curves.clone(fits).table()
 
 
 class UnitMeasurements(MeasureResponseCommand):
