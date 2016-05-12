@@ -4,8 +4,8 @@ from collections import defaultdict
 import numpy as np
 
 import param
-
-from imagen import Composite, Gaussian, Disk
+import numbergen as ng
+from imagen import Composite, Gaussian, Disk, PatternGenerator
 from imagen.random import UniformRandom
 
 import topo
@@ -316,3 +316,56 @@ class SynapticScaling(TransferFnWithState):
         (self.t, self.y_avg, self.first_call, self._next_update_timestamp,
         self._y_avg_prev, self._x_prev) = self.__current_state_stack.pop()
         super(SynapticScaling, self).state_pop()
+
+
+class DependentGaussians(PatternGenerator):
+    """
+    Implements a pattern consisting of a chain of three
+    Gaussian patterns with an orientation offset drawn from
+    a vonMises distribution.
+    """
+
+    aspect_ratio = param.Number(default=4.667,bounds=(0.0,None),softbounds=(0.0,6.0),
+        precedence=0.31,doc="""
+        Ratio of the width to the height.
+        Specifically, xsigma=ysigma*aspect_ratio (see size).""")
+
+    circular = param.Boolean(default=True, doc="""Whether the chain is circular or
+        anti-circular""")
+
+    size = param.Number(default=0.2,doc="""
+        Overall size of the Gaussian, defined by:
+        exp(-x^2/(2*xsigma^2) - y^2/(2*ysigma^2)
+        where ysigma=size/2 and xsigma=size/2*aspect_ratio.""")
+
+    k = param.Number(default=4, doc="""
+        Width of vonMises Distribution""")
+
+    def function(self, p):
+        kwargs = dict(size=p.size, scale=p.scale, aspect_ratio=p.aspect_ratio)
+        patterns = [Gaussian(orientation=p.orientation, x=p.x, y=p.y, **kwargs)]
+
+        pos_offset = p.size*p.aspect_ratio*0.8
+        or_offset = (ng.VonMisesRandom(mu=np.pi, kappa=p.k, time_dependent=True,
+                                       name='vonMises')()/2.)-np.pi/2.
+        orientation = p.orientation
+        x = p.x + pos_offset*np.cos(orientation)
+        y = p.y + pos_offset*np.sin(orientation)
+
+        x += pos_offset*np.cos(orientation+or_offset)
+        y += pos_offset*np.sin(orientation+or_offset)
+        patterns.append(Gaussian(orientation=p.orientation+or_offset,
+                                    x=x, y=y, **kwargs))
+
+        if self.circular:
+            or_offset *= -1
+        orientation += np.pi
+        x = p.x + pos_offset*np.cos(orientation)
+        y = p.y + pos_offset*np.sin(orientation)
+        x += pos_offset*np.cos(orientation+or_offset)
+        y += pos_offset*np.sin(orientation+or_offset)
+        patterns.append(Gaussian(orientation=p.orientation+or_offset,
+                                 x=x, y=y, **kwargs))
+
+        return Composite(generators=patterns, bounds=p.bounds, mask=p.mask,
+                         xdensity=p.xdensity, ydensity=p.ydensity)()

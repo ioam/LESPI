@@ -12,7 +12,7 @@ from topo.submodel.earlyvision import EarlyVisionModel
 from topo.submodel.scal import EarlyVisionSCAL
 from topo.submodel import Model
 
-from . import MultiplyWithConstant
+from . import MultiplyWithConstant, DependentGaussians
 
 @Model.definition
 class ModelSEPI(EarlyVisionSCAL):
@@ -28,6 +28,12 @@ class ModelSEPI(EarlyVisionSCAL):
     circular_mask = param.Boolean(default=True, doc="""
         Whether to apply a circular mask to V1 sheets to avoid edge
         effects.""")
+
+    dependent_gaussians = param.Boolean(default=False)
+
+    gaussian_k = param.Number(default=2)
+
+    gaussian_circular = param.Boolean(default=True)
 
     lgn_density = param.Integer(default=16, doc="""
         Density of the LGN sheets""")
@@ -127,7 +133,7 @@ class ModelSEPI(EarlyVisionSCAL):
     pv_radius = param.Number(default=0.18, bounds=(0, None), doc="""
         Radius of the lateral inhibitory bounds within V1.""")
 
-    pv_size = param.Number(default=0.115, bounds=(0, None), doc="""
+    pv_size = param.Number(default=0.12, bounds=(0, None), doc="""
         Size of the lateral inhibitory connections within V1.""")
 
     #=====================#
@@ -160,6 +166,28 @@ class ModelSEPI(EarlyVisionSCAL):
 
     lateral_size = param.Number(default=2.5, bounds=(0, None), doc="""
         Size of the lateral excitatory connections within V1Exc.""")
+
+    
+    def training_pattern_setup(self, **overrides):
+        """
+        Only the size of Gaussian training patterns has been modified.
+        The 'aspect_ratio' and 'scale' parameter values are unchanged.
+        """
+        or_dim = 'or' in self.dims
+        gaussian = (self.dataset == 'Gaussian')
+        pattern_parameters = {'size':(self.input_width if or_dim and gaussian
+                                      else 3 * 0.1 if gaussian else 10.0),
+                              'aspect_ratio': self.input_aspect if or_dim else 1.0,
+                              'scale': self.contrast / 100.0}
+        if self.dependent_gaussians:
+            overrides['pattern_type'] = DependentGaussians
+            pattern_parameters.update(dict(k=self.gaussian_k,
+                                           circular=self.gaussian_circular))
+        return super(EarlyVisionSCAL, self).training_pattern_setup(
+            pattern_parameters=pattern_parameters,
+            position_bound_x=self.area/2.0+self.v1aff_radius,
+            position_bound_y=self.area/2.0+self.v1aff_radius, **overrides)
+
 
     def property_setup(self, properties):
         properties = super(ModelSEPI, self).property_setup(properties)
@@ -202,8 +230,8 @@ class ModelSEPI(EarlyVisionSCAL):
             mask=CircularMask() if self.circular_mask else SheetMask(),
             measure_maps=False,
             joint_norm_fn=optimized.compute_joint_norm_totals_cython,
-            output_fns=[transferfn.HalfRectifyAndPower(e=self.pv_exponent),
-                        transferfn.Hysteresis(time_constant=self.pv_timeconstant)])
+            output_fns=[transferfn.Hysteresis(time_constant=self.pv_timeconstant),
+                        transferfn.HalfRectifyAndPower(e=self.pv_exponent)])
 
     #========================#
     # Projection definitions #
@@ -403,8 +431,8 @@ class ModelLESPI(ModelSEPI):
             nominal_density=self.cortex_density,
             nominal_bounds=sheet.BoundingBox(radius=self.area/2.),
             joint_norm_fn=optimized.compute_joint_norm_totals_cython,
-            output_fns=[transferfn.HalfRectifyAndPower(e=self.sst_exponent),
-                        transferfn.Hysteresis(time_constant=self.sst_timeconstant)])
+            output_fns=[transferfn.Hysteresis(time_constant=self.sst_timeconstant),
+                        transferfn.HalfRectifyAndPower(e=self.sst_exponent)])
 
 
     @Model.matchconditions('V1Sst', 'local_sst')
