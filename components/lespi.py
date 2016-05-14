@@ -180,7 +180,7 @@ class ModelSEPI(EarlyVisionSCAL):
                               'aspect_ratio': self.input_aspect if or_dim else 1.0,
                               'scale': self.contrast / 100.0}
         if self.dependent_gaussians:
-            overrides['pattern_per_label'] = int(p.area**2)
+            overrides['pattern_per_label'] = int(self.area**2)
             overrides['pattern_type'] = DependentGaussians
             pattern_parameters.update(dict(k=self.gaussian_k,
                                            circular=self.gaussian_circular))
