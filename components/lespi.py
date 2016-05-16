@@ -359,6 +359,8 @@ class ModelSEPI(EarlyVisionSCAL):
             weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.lateral_size),
             strength=self.latexc_strength,
             learning_rate=self.latexc_lr,
+            output_fns=[transferfn.Hysteresis(time_constant=0.1),
+                        transferfn.Sigmoid(r=16, k=-6)],
             nominal_bounds_template=sheet.BoundingBox(radius=self.lateral_radius))
 
 
@@ -482,6 +484,7 @@ class ModelLESPI(ModelSEPI):
             strength=self.sst_inhibition_strength,
             learning_rate=self.sst_inhibition_lr,
             activity_group=(0.9, MultiplyWithConstant()),
+            output_fns=[transferfn.Hysteresis(time_constant=0.1)],
             nominal_bounds_template=sheet.BoundingBox(radius=self.local_radius))
 
 
