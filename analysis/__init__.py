@@ -304,6 +304,9 @@ class measure_iso_suppression(UnitMeasurements):
     thickness = param.Number(default=2.0, bounds=(0, None),
                              doc="""Ring thickness.""")
 
+    durations = param.List(default=[1],
+                           doc="Contrast of the surround.")
+
     contrastsurround = param.List(default=[0, 30, 100],
                                   doc="Contrast of the surround.")
 
@@ -333,6 +336,7 @@ class measure_iso_suppression(UnitMeasurements):
                                   thickness=p.thickness,
                                   sizecenter=p.sizecenter,
                                   sizesurround=p.sizesurround,
+                                  durations=p.durations,
                                   num_orientation=p.num_orientation)
         center_dim = Dimension('ContrastCenter')
 
