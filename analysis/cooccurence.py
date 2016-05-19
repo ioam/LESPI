@@ -8,17 +8,26 @@ import matplotlib.cm as cm
 
 import imagen
 
-from holoviews.plotting.mpl import Plot
+
+from holoviews.plotting.mpl import ElementPlot
 from holoviews.ipython.widgets import ProgressBar
-from holoviews import Histogram
+from holoviews import Histogram, HoloMap, QuadMesh, Store, DynamicMap
 
 from featuremapper.analysis import *
 
+
+class ChevronHistogram(QuadMesh):
+
+    group = param.String(default='ChevronHistogram')
 
 
 class CooccurenceHistogram(param.ParameterizedFunction):
 
     collapse_distance = param.Boolean(default=True)
+
+    collapse_psis = param.Boolean(default=False)
+
+    collapse_thetas = param.Boolean(default=False)
 
     distance_bins = param.List(default=[0, 1, 2, 3, 4])
 
@@ -32,24 +41,13 @@ class CooccurenceHistogram(param.ParameterizedFunction):
         Number of random non-zero samples to take (won't return
         desired number if max_attempts is exceeded.)""")
 
-    max_attempts = param.Number(default=5000, doc="""
-        Maximum number of non-zero attempts to make for each
-        connection field.""")
-
-    max_overlap = param.Number(default=0.5, doc="""
-        Maximum Afferent Overlap.""")
-
-    sampling_seed = param.Number(default=42)
-
+    threshold = param.Integer(default=70)
 
 
     def _initialize_bins(self, p):
         self.distance_bins = p.distance_bins
-        self.phi_bins = np.linspace(-np.pi/2, np.pi/2, p.num_phi+1)\
-                        + np.pi/p.num_phi/2
-        self.theta_bins = np.linspace(-np.pi/2, np.pi/2, p.num_dtheta+1)\
-                          + np.pi/p.num_dtheta/2
-
+        self.phi_bins = np.linspace(-np.pi/2, np.pi/2, p.num_phi+1) + np.pi/p.num_phi/2
+        self.theta_bins = np.linspace(-np.pi/2., np.pi/2., p.num_dtheta+1) + np.pi/p.num_dtheta/2
 
     def _magnitude(self, x):
         return np.sqrt(np.dot(x, x))
@@ -67,115 +65,88 @@ class CooccurenceHistogram(param.ParameterizedFunction):
         return distance, angle
 
 
-    def __call__(self, lateral_grid, on_grid, off_grid, or_pref, or_sel, xpref, ypref, **params):
+    def __call__(self, lateral_grid, or_pref, or_sel, xpref, ypref, **params):
         p = param.ParamOverrides(self, params)
         self._initialize_bins(p)
 
         self.progress_bar = ProgressBar()
 
+        orsel = or_sel.last.data.ravel()
+
         v_hist = None
         num_projs = float(len(lateral_grid.keys()))
 
-        for idx, proj in enumerate(lateral_grid.items()):
-            coord, proj = proj
-            lat_weights = proj.last
+        distances = []; psis = []
+        thetas = []; weights = []
+
+        for idx, (coord, proj) in enumerate(lateral_grid.items()):
+            lat_weights = proj.last.situated
             unit_theta = or_pref.last[coord]
             unit_sel = or_sel.last[coord]
             unit_pos = np.array([xpref.last[coord], ypref.last[coord]])
-            unit_on = on_grid[coord].last.situated.data
-            unit_off = off_grid[coord].last.situated.data
-            l, b, r, t = lat_weights.bounds.lbrt()
-            xd, yd = lat_weights.xdensity, lat_weights.ydensity
-            half_x_width = r-l/xd
-            half_y_width = t-b/yd
 
-            samples = 0
-            attempts = 0
-            distances = np.array(0); phis = np.array(0); thetas = np.array(0); weights = np.array(0)
-            sampled_coords = []
-            while samples < p.num_samples and attempts < 2000:
-                attempts += 1
-                sample_coord = (np.random.uniform(l, r-half_x_width), np.random.uniform(b+half_y_width, t))
-                lat_weight = lat_weights[sample_coord]
-                if (lat_weight == 0) or (sample_coord in sampled_coords):
-                    continue
-                sampled_coords.append(sample_coord)
+            threshold = np.percentile(lat_weights.data, p.threshold)
+            weight_samples = lat_weights.data.ravel()
+            mask = weight_samples>threshold
+            weight_samples = weight_samples[mask]
+            theta_samples = or_pref.last.data.ravel()[mask]
+            xpref_samples = xpref.last.data.ravel()[mask]
+            ypref_samples = ypref.last.data.ravel()[mask]
+            orsel_samples = orsel[mask]
 
-                # Calculate overlap coefficient
-                if p.max_overlap == 1.:
-                    overlap_coeff = 0
-                else:
-                    sample_on = on_grid[sample_coord].last.situated.data
-                    sample_off = off_grid[sample_coord].last.situated.data
-                    cfs = [(unit_on, sample_on), (unit_off, sample_off)]
-                    overlap_coeff = np.mean([self._find_overlap(cf1, cf2) for cf1, cf2 in cfs])
-                if overlap_coeff < p.max_overlap:
-                    samples += 1
-                    sample_theta = or_pref.last[sample_coord]
-                    sample_pos = np.array([xpref.last[sample_coord], ypref.last[sample_coord]])
+            dx = xpref_samples - unit_pos[0]
+            dy = ypref_samples - unit_pos[1]
+            d = np.sqrt(dx**2 + dy**2)
 
-                    X = np.array([unit_pos[0], sample_pos[0]])
-                    Y = np.array([unit_pos[1], sample_pos[1]])
-                    Theta = np.array([unit_theta, sample_theta])
+            phi = np.arctan2(-dx, dy)
+            theta = theta_samples - unit_theta
+            psi = phi - unit_theta
+            psi -= theta/2.
+            psi = ((psi + np.pi/2  - np.pi/p.num_phi/2.) % (np.pi)) - np.pi/2  + np.pi/p.num_phi/2.
+            theta = ((theta + np.pi/2 - np.pi/p.num_dtheta/2.)  % (np.pi) ) - np.pi/2  + np.pi/p.num_dtheta/2.
 
-                    dx = X[:, np.newaxis] - X[np.newaxis, :]
-                    dy = Y[:, np.newaxis] - Y[np.newaxis, :]
-                    d = np.sqrt(dx**2 + dy**2)
+            weights += [weight_samples*unit_sel*orsel_samples]
+            psis += [psi]
+            thetas += [theta]
+            distances += [d]
 
-                    theta = Theta[:, np.newaxis] - Theta[np.newaxis, :]
-                    phi = np.arctan(dy, dx) - np.pi/2 - Theta[np.newaxis, :]
-                    phi -= theta/2
+            self.progress_bar((idx+1)/num_projs*100)
 
-                    weight = lat_weight * or_sel.last[sample_coord] * unit_sel
+        weights = np.concatenate(weights)
+        psis = np.concatenate(psis)
+        thetas = np.concatenate(thetas)
+        distances = np.concatenate(distances)
 
-                    weights = np.append(weights, [0, weight, weight, 0])
-                    phis = np.append(phis, phi.ravel())
-                    thetas = np.append(thetas, theta.ravel())
-                    distances = np.append(distances, d.ravel())
+        bins, values = [], []
+        if not p.collapse_distance:
+            bins.append(self.distance_bins)
+            values.append(distances)
+        if not p.collapse_psis:
+            bins.append(self.phi_bins)
+            values.append(psis)
+        if not p.collapse_thetas:
+            bins.append(self.theta_bins)
+            values.append(thetas)
+        v_hist_, edges_ = np.histogramdd(values, bins=bins,
+                                         normed=False, weights=weights)
 
-            phis = ((phis + np.pi/2 - np.pi/self.num_phi/2.) %
-                    np.pi) - np.pi/2 + np.pi/self.num_phi/2.
-            thetas = ((thetas + np.pi/2 - np.pi/self.num_dtheta/2.) %
-                      np.pi) - np.pi/2 + np.pi/self.num_dtheta/2.
-
-
-            v_hist_, edges_ = np.histogramdd([distances, phis, thetas],
-                                             bins=(self.distance_bins,
-                                                   self.phi_bins,
-                                                   self.theta_bins),
-                                                   normed=False, weights=weights)
-
-            if not(v_hist_.sum() == 0.):
-                # add to the full histogram
-                if v_hist==None:
-                    v_hist = v_hist_*1.
-                else:
-                    v_hist += v_hist_*1.
-
-            self.progress_bar.update((idx+1)/num_projs*100)
-
-        labels = ['Phi', 'dTheta']
-        edges = edges_[1:]
-
+        kdims=['$\Psi$', r'$\Delta\theta$']
         if p.collapse_distance:
-            v_hist = v_hist.sum(axis=0)
-            v_hist /= v_hist.sum()
-            return Histogram(v_hist, edges, labels=labels)
+            if p.collapse_phis:
+                return Histogram((v_hist_, edges_[0]), kdims=kdims[1:])
+            elif p.collapse_thetas:
+                return Histogram((v_hist_, edges_[0]), kdims=kdims[:1])
+            return ChevronHistogram(tuple(edges_)+(v_hist_.T,), kdims=kdims)
         else:
-            dim_info = {'Dimension': {'type': float, 'unit': 'Visual Angle'}}
-            stack = ViewMap(dimension_labels()=['Distance'], dim_info=dim_info,
-                              title="Co-occurence: {label0} = {value0}")
-            for didx, dist in enumerate(edges_[0]):
-                if didx == len(self.distance_bins)-1:
-                    continue
+            stack = HoloMap(kdims=['Visual Angle'])
+            for didx, dist in enumerate(edges_[0][:-1]):
                 dist = (edges_[0][didx+1]+dist) / 2.
-                hist = v_hist[didx, :, :] / v_hist[didx, :, :].sum() # Normalize individually
-                stack[dist] = Histogram(hist, edges, labels=labels)
+                stack[dist] = ChevronHistogram(tuple(edges_[1:])+(v_hist_[didx, :, :].T,), kdims=kdims)
             return stack
 
 
 
-class ChevronPlot(Plot):
+class ChevronPlot(ElementPlot):
     """
     Chevron plot is a specialized plot displaying co-occurence statistics
     """
@@ -200,52 +171,48 @@ class ChevronPlot(Plot):
 
     theta_symmetry = param.Boolean(default=True)
 
-    _stack_type = ViewMap
+    prior = param.Parameter(default=None)
 
-    def __init__(self, stack, prior=None, radius=None, **kwargs):
-        self._stack = self._check_stack(stack, Histogram)
-        self.prior = prior
+    _stack_type = HoloMap
+
+    def __init__(self, stack, radius=None, **kwargs):
         self.plots = []
-        super(ChevronPlot, self).__init__(**kwargs)
+        super(ChevronPlot, self).__init__(stack, **kwargs)
 
-        edges = self._stack.last.edges[:]
-        edges_phi = edges[0]
-        edges_theta = edges[1]
+        edges_phi = self.hmap.last.data[0]
+        edges_theta = self.hmap.last.data[1]
 
         self.num_phi = len(edges_phi) - 1
         self.num_dtheta = len(edges_theta) - 1
+        self.shape = (128, 128)
 
         self.radius = np.ones((self.num_phi, self.num_dtheta)) if radius\
             is None else radius
 
 
-    def __call__(self, axis=None, **params):
-        p = ParamOverrides(self, params)
-        title = self._format_title(self._stack, -1)
-
-        self.shape = (128, 128)
-        lbrt = (0, 0, 128, 128)
-        ax = self._axis(axis, title, r'azimuth difference $\psi$',
-                        r'orientation difference $\theta$', lbrt=lbrt)
+    def initialize_plot(self, **ranges):
+        ax = self.handles['axis']
+        key = self.hmap.keys()[-1]
 
         # Unpack histogram object
-        histogram = self._stack.last
-        v_hist_angle, edges = (histogram.values.copy(), histogram.edges[:])
+        histogram = self.hmap.last
+        edges = histogram.data[0:2]
+        v_hist_angle = histogram.data[2].T.copy()
 
-        if p.theta_symmetry:
+        if self.theta_symmetry:
             v_hist_angle[:, :-1] += v_hist_angle[:, :-1][:, ::-1]
             v_hist_angle[:, -1] *= 2
-        if p.phi_symmetry:
+        if self.phi_symmetry:
             v_hist_angle[:-1, :] += v_hist_angle[:-1, :][::-1, :]
             v_hist_angle[-1, :] *= 2
 
         if self.prior is not None:
             # this allows to show conditional probability by dividing by an arbitrary (prior) distribution
-            prior = self.prior.copy()
-            if p.theta_symmetry:
+            prior = self.prior.data[2].T
+            if self.theta_symmetry:
                 prior[:, :-1] += prior[:, :-1][:, ::-1]
                 prior[:, -1] *= 2
-            if p.phi_symmetry:
+            if self.phi_symmetry:
                 prior[:-1, :] += prior[:-1, :][::-1, :]
                 prior[-1, :] *= 2
             prior /= prior.sum()
@@ -255,7 +222,6 @@ class ChevronPlot(Plot):
         edges_theta = edges[1]
 
         #HACK: force the chevron plot to be symmetric
-
 
         # Center around mean and normalize histogram
         v_hist_angle -= v_hist_angle.mean()
@@ -287,7 +253,7 @@ class ChevronPlot(Plot):
                 else:
                     colors = {'facecolor': 'w', 'edgecolor': 'k', 'alpha' : .5}
                 circ = patches.Circle((rad_Y * (i_phi + .5) + .5, self.shape[0] - rad_X * (s_theta - i_theta - .5) + .5),
-                                      rad, lw=p.line_width_chevrons/2, **colors)
+                                      rad, lw=self.line_width_chevrons/2, **colors)
 
                 circles[(phi, theta)] = circ
                 ax.add_patch(circ)
@@ -296,40 +262,55 @@ class ChevronPlot(Plot):
                 angle_edgelist[0, i_phi * s_theta + i_theta] = self.shape[0] - rad_X * (s_theta - i_theta - .5) +  rad * 0.
                 angle_edgelist[1, i_phi * s_theta + i_theta] = rad_Y * (i_phi + .5) - rad * 1.
                 angle_edgelist[2, i_phi * s_theta + i_theta] = phi + theta/2
-                angle_edgelist[3, i_phi * s_theta + i_theta] = p.sf_
+                angle_edgelist[3, i_phi * s_theta + i_theta] = self.sf_
                 angle_edgelist[4, i_phi * s_theta + i_theta] = 1.
                 # second edge
                 angle_edgelist[0, i_phi * s_theta + i_theta + s_phi * s_theta] = self.shape[0] - rad_X * (s_theta - i_theta - .5) - rad * 0.
                 angle_edgelist[1, i_phi * s_theta + i_theta + s_phi * s_theta] = rad_Y * (i_phi + .5) +  rad * 1.
                 angle_edgelist[2, i_phi * s_theta + i_theta + s_phi * s_theta] = phi - theta/2
-                angle_edgelist[3, i_phi * s_theta + i_theta + s_phi * s_theta] = p.sf_
+                angle_edgelist[3, i_phi * s_theta + i_theta + s_phi * s_theta] = self.sf_
                 angle_edgelist[4, i_phi * s_theta + i_theta + s_phi * s_theta] = 1.
 
         self.handles['circles'] = circles
 
-        ax = self.show_edges(p, ax, angle_edgelist)
+        ax = self.show_edges(ax, angle_edgelist)
 
         eps = 0.55 # HACK to center grid. dunnon what's happening here
         ax.set_xticks([(1./(self.num_phi+1)/2)*self.shape[0], .5*self.shape[0]+eps,
                             (1. - 1./(self.num_phi+1)/2)*self.shape[0]])
-        ax.set_xticklabels([r'$-\pi/2$', r'$0$', r'$\pi/2$'], fontsize=self.font_size)
+        ax.set_xticklabels([r'$-\pi/2$', r'$0$', r'$\pi/2$'])
 
         ax.set_yticks([1./(self.num_dtheta+1)/2*self.shape[0], .5*self.shape[1]+eps,
                             (1. - 1./(self.num_dtheta+1)/2)*self.shape[1]])
 
-        ax.set_yticklabels([r'$-\pi/2$', r'$0$', r'$\pi/2$'], fontsize=self.font_size)
+        ax.set_yticklabels([r'$-\pi/2$', r'$0$', r'$\pi/2$'])
 
-        plt.draw()
+        self._set_labels(ax, histogram.kdims)
 
-        if axis is None: plt.close(self.handles['fig'])
-        return ax if axis else self.handles['fig']
+        # Apply title
+        title = None if self.zorder > 0 else self._format_title(key)
+        if self.show_title and title is not None:
+            fontsize = self._fontsize('title')
+            self.handles['title'] = ax.set_title(title, **fontsize)
+
+        if ax is None: plt.close(self.handles['fig'])
+        return ax if self.subplot else self.handles['fig']
 
 
-    def update_frame(self, n):
-        n = n if n < len(self) else len(self) - 1
-        histogram = self._stack.values()[n]
+    def update_frame(self, key, ranges=None, element=None):
+        reused = isinstance(self.hmap, DynamicMap) and self.overlaid
+        if not reused and element is None:
+            element = self._get_frame(key)
+        else:
+            self.current_key = key
+            self.current_frame = element
 
-        v_hist_angle, _ = histogram.data
+        if element is not None:
+            self.set_param(**self.lookup_options(element, 'plot').options)
+        axis = self.handles['axis']
+
+        v_hist_angle = element.data[2].T
+
 
         if self.theta_symmetry:
             v_hist_angle[:, :-1] += np.fliplr(v_hist_angle[:, :-1])
@@ -351,23 +332,18 @@ class ChevronPlot(Plot):
                 circles[(phi, theta)].set_edgecolor(fc)
 
         if self.show_title:
-            self.handles['title'].set_text(self._format_title(self._stack, n))
-
-        plt.draw()
-
-    def __len__(self):
-        return len(self._stack)
+            self.handles['title'].set_text(self._format_title(key))
 
 
-    def show_edges(self, p, ax, edges, v_min=-1., v_max=1.):
+    def show_edges(self, ax, edges, v_min=-1., v_max=1.):
         """
         Shows the quiver plot of a set of edges.
         """
 
         ax.axis(c='b', lw=0)
 
-        linewidth = p.line_width_chevrons
-        scale = p.scale_chevrons
+        linewidth = self.line_width_chevrons
+        scale = self.scale_chevrons
 
         opts= {'extent': (0, self.shape[0], self.shape[1], 0),
                'cmap': cm.gray,
@@ -397,13 +373,15 @@ class ChevronPlot(Plot):
             for x, y, theta, sf_0, weight in zip(X, Y, Theta, Sf_0, weights):
                 fc = (0, 0, 0, 1)# black
                 # http://matplotlib.sourceforge.net/users/transforms_tutorial.html
-                circ = patches.Circle((x,y), p.scale_circle*scale/sf_0*n_, facecolor=fc, edgecolor='none')
+                circ = patches.Circle((x,y), self.scale_circle*scale/sf_0*n_, facecolor=fc, edgecolor='none')
                 ax.add_patch(circ)
 
             line_segments = LineCollection(segments, linewidths=linewidths, colors=colors, linestyles='solid')
             ax.add_collection(line_segments)
 
         ax.axis([0, self.shape[0], self.shape[1], 0])
-        plt.draw()
 
         return ax
+
+
+Store.register({ChevronHistogram: ChevronPlot}, 'matplotlib')
