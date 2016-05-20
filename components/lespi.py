@@ -359,8 +359,7 @@ class ModelSEPI(EarlyVisionSCAL):
             weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.lateral_size),
             strength=self.latexc_strength,
             learning_rate=self.latexc_lr,
-            output_fns=[transferfn.Hysteresis(time_constant=0.1),
-                        transferfn.Sigmoid(r=16, k=-6)],
+            output_fns=[transferfn.Hysteresis(time_constant=0.2)],
             nominal_bounds_template=sheet.BoundingBox(radius=self.lateral_radius))
 
 
@@ -378,7 +377,7 @@ class ModelLESPI(ModelSEPI):
     surround modulation effects.
     """
 
-    sst_exponent = param.Number(default=1.5, doc="""
+    sst_exponent = param.Number(default=3, doc="""
         Exponent of Sst neuron activation function.""")
 
     sst_timeconstant = param.Number(default=0.2, doc="""
@@ -390,10 +389,10 @@ class ModelLESPI(ModelSEPI):
 
     # Excitatory Projections #
 
-    loc_sst_strength=param.Number(default=1.0, doc="""
+    loc_sst_strength=param.Number(default=0.6, doc="""
         Lateral SOM excitatory projection strength""")
 
-    lat_sst_strength=param.Number(default=2.0, doc="""
+    lat_sst_strength=param.Number(default=6.0, doc="""
         Lateral SOM excitatory projection strength""")
 
     # Sst projections #
@@ -401,7 +400,7 @@ class ModelLESPI(ModelSEPI):
     disinhibition_strength=param.Number(default=0.0, doc="""
         Disinhibitory SOM-PV strength.""")
 
-    sst_inhibition_strength=param.Number(default=-0.1, doc="""
+    sst_inhibition_strength=param.Number(default=-1.0, doc="""
         SOM Inhibitory strength""")
 
     #================#
@@ -411,7 +410,7 @@ class ModelLESPI(ModelSEPI):
     loc_sst_lr=param.Number(default=0, doc="""
         Lateral SOM excitatory projection strength""")
 
-    lat_sst_lr=param.Number(default=3.0, doc="""
+    lat_sst_lr=param.Number(default=5.0, doc="""
         Lateral SOM excitatory projection strength""")
 
     disinhibition_lr=param.Number(default=0.1, doc="""
@@ -434,8 +433,7 @@ class ModelLESPI(ModelSEPI):
             nominal_density=self.cortex_density,
             nominal_bounds=sheet.BoundingBox(radius=self.area/2.),
             joint_norm_fn=optimized.compute_joint_norm_totals_cython,
-            output_fns=[transferfn.Hysteresis(time_constant=self.sst_timeconstant),
-                        transferfn.HalfRectifyAndPower(e=self.sst_exponent)])
+            output_fns=[transferfn.Hysteresis(time_constant=self.sst_timeconstant)])
 
 
     @Model.matchconditions('V1Sst', 'local_sst')
@@ -467,7 +465,9 @@ class ModelLESPI(ModelSEPI):
             weights_generator=imagen.Gaussian(aspect_ratio=1.0, size=self.lateral_size),
             strength=self.lat_sst_strength,
             learning_rate=self.lat_sst_lr,
-            nominal_bounds_template=sheet.BoundingBox(radius=self.lateral_radius))
+            nominal_bounds_template=sheet.BoundingBox(radius=self.lateral_radius),
+            output_fns=[transferfn.Hysteresis(time_constant=0.2),
+                        transferfn.HalfRectifyAndPower(e=self.sst_exponent)])
 
 
     @Model.matchconditions('V1Exc', 'sst_inhibition')
@@ -484,7 +484,6 @@ class ModelLESPI(ModelSEPI):
             strength=self.sst_inhibition_strength,
             learning_rate=self.sst_inhibition_lr,
             activity_group=(0.9, MultiplyWithConstant()),
-            output_fns=[transferfn.Hysteresis(time_constant=0.1)],
             nominal_bounds_template=sheet.BoundingBox(radius=self.local_radius))
 
 
