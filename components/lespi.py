@@ -153,7 +153,7 @@ class ModelSEPI(EarlyVisionSCAL):
     laterals = param.Boolean(default=False, doc="""
         Instantiate long-range lateral connections. Expensive!""")
 
-    latexc_strength=param.Number(default=1.0, doc="""
+    latexc_strength=param.Number(default=3.0, doc="""
         Lateral excitatory connection strength""")
 
     latexc_lr=param.Number(default=1.0, doc="""
