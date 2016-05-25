@@ -16,6 +16,15 @@ from holoviews import Histogram, HoloMap, QuadMesh, Store, DynamicMap
 from featuremapper.analysis import *
 
 
+def circular_dist(a, b, period):
+    """
+    Returns the distance between a and b (scalars) in a domain with `period` period.
+    """
+    diff = np.abs(a-b) % period
+    diff[np.logical_not(np.logical_and((a - b >= 0),(a - b <= period)))] *= -1
+    return diff
+
+
 class ChevronHistogram(QuadMesh):
 
     group = param.String(default='ChevronHistogram')
@@ -98,8 +107,8 @@ class CooccurenceHistogram(param.ParameterizedFunction):
             dy = ypref_samples - unit_pos[1]
             d = np.sqrt(dx**2 + dy**2)
 
-            phi = np.arctan2(-dx, dy)
-            theta = theta_samples - unit_theta
+            phi = np.arctan2(dy, dx)
+            theta = circular_dist(theta_samples, unit_theta, np.pi)
             psi = phi - unit_theta
             psi -= theta/2.
             psi = ((psi + np.pi/2  - np.pi/p.num_phi/2.) % (np.pi)) - np.pi/2  + np.pi/p.num_phi/2.
@@ -132,7 +141,7 @@ class CooccurenceHistogram(param.ParameterizedFunction):
 
         kdims=['$\Psi$', r'$\Delta\theta$']
         if p.collapse_distance:
-            if p.collapse_phis:
+            if p.collapse_psis:
                 return Histogram((v_hist_, edges_[0]), kdims=kdims[1:])
             elif p.collapse_thetas:
                 return Histogram((v_hist_, edges_[0]), kdims=kdims[:1])
@@ -226,7 +235,10 @@ class ChevronPlot(ElementPlot):
         # Center around mean and normalize histogram
         v_hist_angle -= v_hist_angle.mean()
         v_max = np.absolute(v_hist_angle).max()
-        v_hist_angle = np.divide(v_hist_angle, v_max)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            v_hist_angle = np.true_divide(v_hist_angle, v_max)
+            v_hist_angle[v_hist_angle == np.inf] = 0
+            v_hist_angle = np.nan_to_num(v_hist_angle)
 
         # Calculate Phi and Theta values
         v_phi, v_theta = edges_phi - np.pi / self.num_phi / 2, edges_theta - np.pi / self.num_dtheta / 2
@@ -284,6 +296,9 @@ class ChevronPlot(ElementPlot):
                             (1. - 1./(self.num_dtheta+1)/2)*self.shape[1]])
 
         ax.set_yticklabels([r'$-\pi/2$', r'$0$', r'$\pi/2$'])
+
+        tick_fontsize = self._fontsize('ticks','labelsize',common=False)
+        if tick_fontsize: ax.tick_params(**tick_fontsize)
 
         self._set_labels(ax, histogram.kdims)
 
