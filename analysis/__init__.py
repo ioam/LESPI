@@ -611,12 +611,11 @@ class CFvonMisesFit(param.ParameterizedFunction):
 
     sheet = param.String(default='V1Exc')
 
-    roi_radius = param.Number(default=None, allow_None=True)
 
     def _function(self, orpref, k, mu1, mu2, weight=0, x=0, y=0, aspect=1,
                   ravelled=True, vonMises=True):
         l, b, r, t = orpref.bounds.lbrt()
-        if k < 0 or mu1 < 0 or mu2 < 0 or x > r or x < l or y > t or y < b:
+        if k < 0 or mu1 < 0 or mu2 < 0 or x > r or x < l or y > t or y < b or aspect <= 0:
             return np.ones(orpref.data.shape).ravel()*10**6
         mask = ig.Disk(x=x, y=y, xdensity=orpref.xdensity, smoothing=0, ydensity=orpref.ydensity,
                        size=self.p.lateral_size, bounds=orpref.bounds)()
@@ -657,7 +656,7 @@ class CFvonMisesFit(param.ParameterizedFunction):
         map_dims = grid.values()[0].kdims
         fit_tables = hv.HoloMap(kdims=['x', 'y']+map_dims)
         map_dims = [d.name for d in map_dims]
-        for idx, ((x, y), sheet_stack) in enumerate(grid.items()):
+        for ((x, y), sheet_stack) in grid.items():
             for key, view in sheet_stack.items():
                 orpref = orpreference.select(**dict(zip(map_dims, key)))
                 if isinstance(orpref, HoloMap):
@@ -666,26 +665,24 @@ class CFvonMisesFit(param.ParameterizedFunction):
                     processed = self._process(view, orpref, (x, y))
                 except RuntimeError:
                     continue
-                data, fit, fit_lateral, naive_lateral, error, naive_error = processed
+                data, fit_lateral, error, naive_lateral, naive_error, fit = processed
                 fit_tables[(x, y)+key] = fit
                 if (x, y) not in fit_grid:
                     lat_grid[(x, y)] = sheet_stack.clone({key: data})
                     fit_grid[(x, y)] = sheet_stack.clone({key: fit_lateral})
-                    naive_grid[(x, y)] = sheet_stack.clone({key: naive_lateral})
                     error_grid[(x, y)] = sheet_stack.clone({key: error})
+                    naive_grid[(x, y)] = sheet_stack.clone({key: naive_lateral})
                     naive_error_grid[(x, y)] = sheet_stack.clone({key: naive_error})
                 else:
                     lat_grid[x, y][key] = data
                     fit_grid[x, y][key] = fit_lateral
-                    naive_grid[x, y][key] = naive_lateral
                     error_grid[x, y][key] = error
+                    naive_grid[x, y][key] = naive_lateral
                     naive_error_grid[x, y][key] = naive_error
-            progress(((idx+1)/float(grid_length))*100)
-
         results.set_path(('Preprocessed', 'CFs'), lat_grid)
-        results.set_path(('NaiveFit', 'CFs'), naive_grid)
         results.set_path(('vonMisesFit', 'CFs'), fit_grid)
         results.set_path(('vonMisesFit', 'Error'), error_grid)
+        results.set_path(('NaiveFit', 'CFs'), naive_grid)
         results.set_path(('NaiveFit', 'Error'), naive_error_grid)
         results.set_path(('Results', 'Table'), fit_tables)
         return results
@@ -702,34 +699,38 @@ class CFvonMisesFit(param.ParameterizedFunction):
                  'mu1', 'mu2', 'weight', 'xfit', 'yfit']
         if self.p.fit_aspect:
             vdims += ['aspect']
-            initial += (1,)
+            initial += (1.,)
 
         # Fit naive and vonMises model
+        fit, _ = curve_fit(self._function, orpref, lat_data.ravel(), p0=initial)
         naive_function = partial(self._function, vonMises=False)
         naive_fit, _ = curve_fit(naive_function, orpref,
                                  lat_data.ravel(), p0=initial)
-        fit, _ = curve_fit(self._function, orpref, lat_data.ravel(), p0=initial)
 
         # Get fitted data and compute error
         observed_mean = lat_data.mean()
         fit_data = self._function(orpref, *fit, ravelled=False)
-        naive_data = naive_function(orpref, *fit, ravelled=False)
         error = (lat_data-fit_data)
-        naive_error = (lat_data-naive_data)
         sum_of_squares = ((lat_data-observed_mean)**2).sum()
         rsquared = 1 - (error**2).sum()/sum_of_squares
-        rsquared_naive = 1 - (naive_error**2).sum()/sum_of_squares
-        fit_results = [('Naive', (naive_error**2).mean(), rsquared_naive) + tuple(naive_fit),
-                       ('vonMises', (error**2).mean(), rsquared) + tuple(fit)]
-
         # Wrap data in HoloViews objects
         fit_lateral = hv.Image(fit_data, bounds=orpref.bounds)
+        error_img = fit_lateral.clone(error, group='vonMises Error',
+                                  vdims=['Square Error'])
+
+        naive_data = naive_function(orpref, *fit, ravelled=False)
+        naive_error = (lat_data-naive_data)
+        rsquared_naive = 1 - (naive_error**2).sum()/sum_of_squares
+
         naive_lateral = hv.Image(naive_data, bounds=orpref.bounds)
-        error = fit_lateral.clone(error, group='vonMises Error', vdims=['Square Error'])
-        naive_error = fit_lateral.clone(naive_error, group='vonMises Error',
+        naive_error_img = fit_lateral.clone(naive_error, group='vonMises Error',
                                         vdims=['Square Error'])
+        fit_results = [('vonMises', (error**2).mean(), rsquared) + tuple(fit),
+                       ('Naive', (naive_error**2).mean(),
+                        rsquared_naive) + tuple(naive_fit)]
         fit_table = hv.Table(fit_results, kdims=['Model'], vdims=vdims)
-        return [lateral_cf, fit_table, fit_lateral, naive_lateral, error, naive_error]
+        return [lateral_cf, fit_lateral, error_img,
+                naive_lateral, naive_error_img, fit_table]
 
 
 
