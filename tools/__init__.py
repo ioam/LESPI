@@ -2,7 +2,8 @@
 IPython Tools taken from Jean-Luc Stevens TCAL repository.
 """
 
-import os, sys, time, difflib
+import os, sys, time, difflib, re
+from xml.etree import ElementTree as et
 
 from IPython.core import page
 from holoviews import NdMapping
