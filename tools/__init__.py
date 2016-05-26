@@ -11,6 +11,25 @@ from holoviews.interface.collector import AttrTree
 from io import BytesIO
 from contextlib import contextmanager
 
+# Open svg file with ElementTree XML parser
+
+def fix_alpha(svg_file):
+    xmlRoot = et.parse(svg_file).getroot()
+
+    opacityTarget = re.compile(r'((?<=^opacity:)|(?<=;opacity:))\d+\.?\d*')
+    for target in xmlRoot.findall('.//*[@style]'):
+        m = opacityTarget.search(target.attrib['style'])
+        if m and float(m.group(0)) < 1.0:
+            # replace opacity target to 100%
+            target.attrib['style'] = re.sub(opacityTarget, '1', target.attrib['style'])
+
+            # move opacity to new fill-opacity attribute, supported by pdfs
+            target.attrib['style'] += ';fill-opacity:{0}'.format(m.group(0))
+
+    # write to output file (can be the same file as input)
+    with open(svg_file, 'wb') as outputFile:
+        et.ElementTree(xmlRoot).write(outputFile)
+
 #=============#
 # Build index #
 #=============#
