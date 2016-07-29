@@ -1,4 +1,7 @@
-LESPI Paper
-===========
+PhD Thesis code
+===============
 
-Repository to hold work in progress on the LESPI paper including Latex documents, notebooks showing progress on different models and parameter explorations.
+This repository contains all the notebooks, figures and extraneous
+code necessary to reproduce my thesis. For full details about the
+thesis and the rendered notebooks go to `thesis.philippjfr.com
+<http://thesis.philippjfr.com>`_.
